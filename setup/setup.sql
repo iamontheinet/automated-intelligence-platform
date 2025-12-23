@@ -58,8 +58,9 @@ CREATE OR REPLACE TABLE customers (
 );
 
 -- Create orders table
+-- Note: order_id uses VARCHAR to support UUID from Snowpipe Streaming
 CREATE OR REPLACE TABLE orders (
-    order_id INT PRIMARY KEY,
+    order_id VARCHAR(36) PRIMARY KEY,
     customer_id INT,
     order_date TIMESTAMP,
     order_status VARCHAR(20),
@@ -69,9 +70,10 @@ CREATE OR REPLACE TABLE orders (
 );
 
 -- Create order_items table
+-- Note: order_item_id and order_id use VARCHAR to support UUID from Snowpipe Streaming
 CREATE OR REPLACE TABLE order_items (
-    order_item_id INT PRIMARY KEY,
-    order_id INT,
+    order_item_id VARCHAR(36) PRIMARY KEY,
+    order_id VARCHAR(36),
     product_id INT,
     product_name VARCHAR(100),
     product_category VARCHAR(50),
@@ -143,13 +145,10 @@ BEGIN
         END AS customer_segment
     FROM TABLE(GENERATOR(ROWCOUNT => :num_orders));
     
-    -- Get the next order_id
-    LET next_order_id INT := (SELECT COALESCE(MAX(order_id), 0) + 1 FROM orders);
-    
-    -- Insert new orders (one per customer)
+    -- Insert new orders (one per customer) with UUID order_id
     INSERT INTO orders
     SELECT
-        :next_order_id + ROW_NUMBER() OVER (ORDER BY SEQ4()) - 1 AS order_id,
+        UUID_STRING() AS order_id,
         :next_customer_id + ROW_NUMBER() OVER (ORDER BY SEQ4()) - 1 AS customer_id,
         DATEADD(day, -UNIFORM(1, 365, RANDOM()), CURRENT_TIMESTAMP()) AS order_date,
         CASE UNIFORM(1, 5, RANDOM())
@@ -164,15 +163,14 @@ BEGIN
         ROUND(UNIFORM(5, 50, RANDOM()), 2) AS shipping_cost
     FROM TABLE(GENERATOR(ROWCOUNT => :num_orders));
     
-    -- Get the next order_item_id
-    LET next_item_id INT := (SELECT COALESCE(MAX(order_item_id), 0) + 1 FROM order_items);
-    
-    -- Insert order items (1-10 items per new order)
+    -- Insert order items (1-10 items per new order) with UUID order_item_id
     INSERT INTO order_items
     WITH new_orders AS (
-        SELECT order_id
+        -- Get the most recent orders (last num_orders)
+        SELECT order_id, order_date
         FROM orders
-        WHERE order_id >= :next_order_id
+        ORDER BY order_date DESC
+        LIMIT :num_orders
     ),
     order_item_counts AS (
         SELECT
@@ -191,7 +189,7 @@ BEGIN
         WHERE numbers.item_num < o.items_count
     )
     SELECT
-        :next_item_id + ROW_NUMBER() OVER (ORDER BY order_id, item_seq) - 1 AS order_item_id,
+        UUID_STRING() AS order_item_id,
         order_id,
         1001 + UNIFORM(0, 9, RANDOM()) AS product_id,
         CASE UNIFORM(1, 10, RANDOM())
