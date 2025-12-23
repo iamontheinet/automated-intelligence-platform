@@ -6,13 +6,12 @@ This directory contains reference documentation for the core setup infrastructur
 
 ### Dynamic Tables
 - `DYNAMIC_TABLE_CONFIGURATION.md` - Configuration reference for the 3-tier Dynamic Tables pipeline
-- `DYNAMIC_TABLE_LAG_FIX.md` - Troubleshooting guide for lag configuration issues
 
 **Covers:**
 - TARGET_LAG settings (time-based vs DOWNSTREAM)
 - Refresh behavior and cascading
 - Performance optimization
-- Common configuration mistakes
+- Tier architecture
 
 ## Usage
 
@@ -20,9 +19,6 @@ This directory contains reference documentation for the core setup infrastructur
 ```bash
 # View configuration reference
 cat setup/docs/DYNAMIC_TABLE_CONFIGURATION.md
-
-# View troubleshooting guide
-cat setup/docs/DYNAMIC_TABLE_LAG_FIX.md
 ```
 
 ## Resetting for Fresh Demo
