@@ -6,7 +6,7 @@ This directory contains setup scripts for **Snowflake Intelligence** features: C
 
 **Required:** Core setup must be completed first (includes semantic model stage creation)
 ```bash
-snow sql -f setup/setup.sql -c dash-builder-si
+snow sql -f setup.sql -c dash-builder-si
 ```
 
 ## Files
