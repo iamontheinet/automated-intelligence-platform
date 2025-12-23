@@ -509,10 +509,9 @@ automated-intelligence/
 │   │   ├── Dash_AI_DT.ipynb             # Dynamic Tables deep dive tutorial
 │   │   ├── test_data_quality.sql        # Data quality validation
 │   │   └── test_data_quality.ipynb      # Interactive DQ notebook
-│   └── docs/                   # Reference docs and maintenance scripts
+│   └── docs/                   # Reference documentation
 │       ├── DYNAMIC_TABLE_CONFIGURATION.md   # DT configuration reference
-│       ├── DYNAMIC_TABLE_LAG_FIX.md         # DT troubleshooting guide
-│       └── reset_tables.sql                 # Reset data for fresh start
+│       └── DYNAMIC_TABLE_LAG_FIX.md         # DT troubleshooting guide
 │
 ├── sql/                        # Demo 1: Gen2 Warehouse (component-specific setup)
 │   ├── setup_staging_pipeline.sql    # Staging schema, tables, Gen2 WH

@@ -1,6 +1,6 @@
-# Setup Documentation & Maintenance Scripts
+# Setup Documentation
 
-This directory contains reference documentation and maintenance scripts for the core setup infrastructure.
+This directory contains reference documentation for the core setup infrastructure.
 
 ## Documentation
 
@@ -14,17 +14,6 @@ This directory contains reference documentation and maintenance scripts for the 
 - Performance optimization
 - Common configuration mistakes
 
-## Maintenance Scripts
-
-⚠️ **Use with caution** - These scripts modify or reset data.
-
-### Data Management
-- `reset_tables.sql` - Reset and recreate tables for fresh start
-
-**When to use:**
-- When you need to clear data and start fresh for demos
-- Truncates raw tables and recreates Dynamic Tables
-
 ## Usage
 
 ### Read Documentation
@@ -36,23 +25,21 @@ cat setup/docs/DYNAMIC_TABLE_CONFIGURATION.md
 cat setup/docs/DYNAMIC_TABLE_LAG_FIX.md
 ```
 
-### Run Maintenance Scripts
+## Resetting for Fresh Demo
+
+To completely reset and start fresh:
+
 ```bash
-# Reset tables (⚠️ deletes data!)
-snow sql -f setup/docs/reset_tables.sql -c dash-builder-si
+# Drop everything
+DROP DATABASE automated_intelligence CASCADE;
+DROP ROW ACCESS POLICY IF EXISTS automated_intelligence.raw.customers_region_policy;
+DROP ROLE IF EXISTS west_coast_manager;
+
+# Re-run setup
+snow sql -f setup/setup.sql -c dash-builder-si
 ```
 
-## When to Use These
-
-**Documentation:**
-- When configuring Dynamic Tables
-- When debugging refresh issues
-- When understanding pipeline architecture
-
-**Maintenance Scripts:**
-- ❌ **NOT** part of initial setup
-- ✅ Use for troubleshooting or reconfiguration
-- ✅ Use for demo resets
+This ensures you're always working with the latest setup configuration.
 
 ## Related Resources
 
