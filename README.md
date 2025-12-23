@@ -512,10 +512,8 @@ automated-intelligence/
 │   └── docs/                   # Reference docs and maintenance scripts
 │       ├── DYNAMIC_TABLE_CONFIGURATION.md   # DT configuration reference
 │       ├── DYNAMIC_TABLE_LAG_FIX.md         # DT troubleshooting guide
-│       ├── fix_dynamic_table_lags.sql       # Fix DT lag settings
 │       ├── set_realtime_lag.sql             # Configure real-time lag
-│       ├── reset_tables.sql                 # Reset data for fresh start
-│       └── migrate_to_uuid.sql              # Historical migration script
+│       └── reset_tables.sql                 # Reset data for fresh start
 │
 ├── sql/                        # Demo 1: Gen2 Warehouse (component-specific setup)
 │   ├── setup_staging_pipeline.sql    # Staging schema, tables, Gen2 WH

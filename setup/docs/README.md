@@ -19,21 +19,18 @@ This directory contains reference documentation and maintenance scripts for the 
 ⚠️ **Use with caution** - These scripts modify system configuration or reset data.
 
 ### Dynamic Tables Configuration
-- `fix_dynamic_table_lags.sql` - Fix TARGET_LAG settings for proper cascading
 - `set_realtime_lag.sql` - Configure Dynamic Tables for real-time (1 second) lag
 
 **When to use:**
-- After modifying Dynamic Tables structure
-- When refresh cascading is not working correctly
 - For demo scenarios requiring sub-second freshness
+- Default is 12 hours (batch analytics), this switches to near real-time
 
 ### Data Management
 - `reset_tables.sql` - Reset and recreate tables for fresh start
-- `migrate_to_uuid.sql` - Migration script for UUID implementation (historical)
 
 **When to use:**
-- `reset_tables.sql`: When you need to clear data and start fresh for demos
-- `migrate_to_uuid.sql`: Likely already applied (historical migration)
+- When you need to clear data and start fresh for demos
+- Truncates raw tables and recreates Dynamic Tables
 
 ## Usage
 
@@ -48,10 +45,7 @@ cat setup/docs/DYNAMIC_TABLE_LAG_FIX.md
 
 ### Run Maintenance Scripts
 ```bash
-# Fix Dynamic Table lag settings
-snow sql -f setup/docs/fix_dynamic_table_lags.sql -c dash-builder-si
-
-# Set real-time lag (for demos)
+# Set real-time lag (for demos requiring sub-second freshness)
 snow sql -f setup/docs/set_realtime_lag.sql -c dash-builder-si
 
 # Reset tables (⚠️ deletes data!)

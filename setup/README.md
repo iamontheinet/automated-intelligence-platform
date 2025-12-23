@@ -59,8 +59,8 @@ automated_intelligence
 
 ### Core Tables
 - `raw.customers` - Customer master data
-- `raw.orders` - Order transactions
-- `raw.order_items` - Order line items
+- `raw.orders` - Order transactions (**Note:** `order_id` is VARCHAR(36) for UUID compatibility with Snowpipe Streaming)
+- `raw.order_items` - Order line items (**Note:** `order_item_id` and `order_id` are VARCHAR(36) for UUID)
 - `raw.product_catalog` - Product information
 
 ### Dynamic Tables (3-Tier Pipeline)
@@ -69,7 +69,9 @@ automated_intelligence
 - **Tier 3: Aggregation** - `daily_business_metrics`, `product_performance_metrics`
 
 ### Data Generation
-- `generate_orders(num_orders)` - Stored procedure to generate sample data
+- `generate_orders(num_orders)` - Stored procedure to generate sample data with UUIDs
+
+**Important:** This procedure generates UUIDs for `order_id` and `order_item_id` to match the format used by Snowpipe Streaming (both Java and Python implementations).
 
 ### AI Components (Optional)
 - `semantic.order_analytics_agent` - Cortex Agent for natural language queries
