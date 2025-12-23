@@ -19,9 +19,9 @@ staged as (
         customer_segment,
         
         -- Derived fields
-        datediff('day', signup_date, current_date()) as days_since_signup,
-        date_trunc('month', signup_date) as signup_month,
-        date_trunc('year', signup_date) as signup_year
+        datediff('day', registration_date, current_date()) as days_since_signup,
+        date_trunc('month', registration_date) as signup_month,
+        date_trunc('year', registration_date) as signup_year
         
     from source
 )
