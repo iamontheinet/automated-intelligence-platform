@@ -10,18 +10,11 @@ These scripts set up the foundational components that are common across all demo
 - Core raw tables
 - Data generation procedures
 - Dynamic Tables pipeline
-- Cortex Search and Agent
 
 ## Files
 
 ### Required for All Demos
 - `setup.sql` - **Primary setup script** - Creates database, schemas, warehouse, raw tables, data generation procedures, and Dynamic Tables
-
-### Optional (AI/NL Query Features)
-- `create_semantic_model_stage.sql` - Creates stage for semantic model YAML files
-- `business_insights_semantic_model.yaml` - Semantic model definition for Cortex Analyst
-- `create_agent.sql` - Creates Cortex Agent for natural language queries
-- `create_cortex_search.sql` - Creates Cortex Search service for product discovery
 
 ## Setup Instructions
 
@@ -35,16 +28,8 @@ snow sql -f setup/setup.sql -c dash-builder-si
 ### Full Setup (with AI Features)
 
 ```bash
-# 1. Core setup
+# Core setup
 snow sql -f setup/setup.sql -c dash-builder-si
-
-# 2. Cortex Search
-snow sql -f setup/create_cortex_search.sql -c dash-builder-si
-
-# 3. Semantic model and agent
-snow sql -f setup/create_semantic_model_stage.sql -c dash-builder-si
-snow stage copy setup/business_insights_semantic_model.yaml @automated_intelligence.raw.semantic_models/ --overwrite -c dash-builder-si
-snow sql -f setup/create_agent.sql -c dash-builder-si
 ```
 
 ## What Gets Created
@@ -54,7 +39,8 @@ snow sql -f setup/create_agent.sql -c dash-builder-si
 automated_intelligence
 ├── raw                    # Source data tables
 ├── dynamic_tables         # Transformation pipeline
-└── semantic              # AI/NL query layer
+├── staging               # Gen2 warehouse staging
+└── interactive           # High-concurrency serving
 ```
 
 ### Core Tables

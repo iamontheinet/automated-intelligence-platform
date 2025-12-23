@@ -498,18 +498,18 @@ python evaluate_order_analytics.py
 automated-intelligence/
 ├── setup/                      # Core shared setup (required for all demos)
 │   ├── setup.sql               # Database, schemas, warehouse, raw tables, dynamic tables
-│   ├── create_semantic_model_stage.sql  # Stage for semantic model YAML
-│   ├── create_agent.sql        # Cortex Agent for natural language queries
-│   ├── create_cortex_search.sql # Cortex Search for product discovery
-│   ├── business_insights_semantic_model.yaml  # Semantic model definition
 │   ├── README.md               # Setup instructions and verification
 │   └── examples/               # Tutorials and example scripts
-│   │   ├── ai_functions_notebook.ipynb  # Interactive AI functions tutorial
-│   │   ├── Dash_AI_DT.ipynb             # Dynamic Tables deep dive tutorial
-│   │   ├── test_data_quality.sql        # Data quality validation
-│   │   └── test_data_quality.ipynb      # Interactive DQ notebook
-│   └── docs/                   # Reference documentation
-│       └── DYNAMIC_TABLE_CONFIGURATION.md   # DT configuration reference
+│       ├── ai_functions_notebook.ipynb  # Interactive AI functions tutorial
+│       ├── Dash_AI_DT.ipynb             # Dynamic Tables deep dive tutorial
+│       ├── test_data_quality.sql        # Data quality validation
+│       └── test_data_quality.ipynb      # Interactive DQ notebook
+│
+├── snowflake-intelligence/     # Demo 2: Cortex AI & Analyst (component-specific setup)
+│   ├── business_insights_semantic_model.yaml  # Semantic model definition
+│   ├── create_semantic_model_stage.sql        # Stage for semantic model YAML
+│   ├── create_agent.sql                       # Cortex Agent for NL queries
+│   └── create_cortex_search.sql               # Cortex Search for product discovery
 │
 ├── gen2-warehouse/             # Demo 1: Gen2 Warehouse (component-specific setup)
 │   ├── setup_staging_pipeline.sql    # Staging schema, tables, Gen2 WH
