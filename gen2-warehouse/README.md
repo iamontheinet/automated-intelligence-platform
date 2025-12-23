@@ -21,7 +21,7 @@ snow sql -f gen2-warehouse/setup_merge_procedures.sql -c dash-builder-si
 
 ## Prerequisites
 
-- Core setup must be completed first (`setup/setup.sql`)
+- Core setup must be completed first (`setup.sql`)
 - Snowpipe Streaming configured to load data into staging tables
 
 ## What Gets Created

@@ -1,6 +1,6 @@
-# Setup Examples & Tutorials
+# Tests & Tutorials
 
-This directory contains example notebooks and SQL scripts demonstrating features created in the core setup.
+This directory contains test notebooks and SQL scripts for validating and learning about features in the automated intelligence platform.
 
 ## Files
 
@@ -40,16 +40,16 @@ This directory contains example notebooks and SQL scripts demonstrating features
 
 ## Usage
 
-### Run SQL Examples
+### Run SQL Tests
 ```bash
 # Data quality tests
-snow sql -f setup/examples/test_data_quality.sql -c dash-builder-si
+snow sql -f tests/test_data_quality.sql -c dash-builder-si
 ```
 
 ### Run Notebooks
 ```bash
 # Launch Jupyter
-jupyter notebook setup/examples/
+jupyter notebook tests/
 
 # Open any .ipynb file
 # - test_dynamic_tables.ipynb for Dynamic Tables tutorial
@@ -61,10 +61,10 @@ jupyter notebook setup/examples/
 
 Core setup must be completed first:
 ```bash
-snow sql -f setup/setup.sql -c dash-builder-si
+snow sql -f setup.sql -c dash-builder-si
 ```
 
-This creates all tables, functions, and infrastructure used in these examples.
+This creates all tables, functions, and infrastructure used in these tests.
 
 ## Note
 

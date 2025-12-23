@@ -24,7 +24,7 @@ Run these setup scripts **in order** to prepare all demo components:
 
 ```bash
 # 1. Base setup (database, tables, dynamic tables)
-snow sql -f setup/setup.sql -c dash-builder-si
+snow sql -f setup.sql -c dash-builder-si
 
 # 2. Interactive tables setup
 snow sql -f interactive/setup_interactive.sql -c dash-builder-si

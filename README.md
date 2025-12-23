@@ -76,17 +76,13 @@ All demos share the same foundation and work together to show an end-to-end plat
 Run these scripts **once** to set up shared infrastructure:
 
 ```bash
-# 1. Core infrastructure (database, schemas, warehouse, tables, dynamic tables)
-snow sql -f setup/setup.sql -c dash-builder-si
-
-# 2. Cortex Search for product discovery
-snow sql -f setup/create_cortex_search.sql -c dash-builder-si
-
-# 3. Semantic model and Cortex Agent (optional - for AI/NL queries)
-snow sql -f setup/create_semantic_model_stage.sql -c dash-builder-si
-snow stage copy setup/business_insights_semantic_model.yaml @automated_intelligence.raw.semantic_models/ --overwrite -c dash-builder-si
-snow sql -f setup/create_agent.sql -c dash-builder-si
+# Core infrastructure (database, schemas, warehouse, tables, dynamic tables)
+snow sql -f setup.sql -c dash-builder-si
 ```
+
+### Optional: Snowflake Intelligence Setup
+
+See `snowflake-intelligence/README.md` for Cortex Agent, Cortex Search, and semantic model setup.
 
 ### Component-Specific Setup (Run Only What You Need)
 
@@ -496,14 +492,13 @@ python evaluate_order_analytics.py
 
 ```
 automated-intelligence/
-├── setup/                      # Core shared setup (required for all demos)
-│   ├── setup.sql               # Database, schemas, warehouse, raw tables, dynamic tables
-│   ├── README.md               # Setup instructions and verification
-│   └── examples/               # Tutorials and example scripts
-│       ├── test_ai_functions.ipynb      # Interactive AI functions tutorial
-│       ├── test_dynamic_tables.ipynb    # Dynamic Tables deep dive tutorial
-│       ├── test_data_quality.sql        # Data quality validation
-│       └── test_data_quality.ipynb      # Interactive DQ notebook
+├── setup.sql                   # Core setup script (run this first!)
+│
+├── tests/                      # Test notebooks and tutorials
+│   ├── test_ai_functions.ipynb      # Interactive AI functions tutorial
+│   ├── test_dynamic_tables.ipynb    # Dynamic Tables deep dive tutorial
+│   ├── test_data_quality.sql        # Data quality validation
+│   └── test_data_quality.ipynb      # Interactive DQ notebook
 │
 ├── snowflake-intelligence/     # Demo 2: Cortex AI & Analyst (component-specific setup)
 │   ├── business_insights_semantic_model.yaml  # Semantic model definition
