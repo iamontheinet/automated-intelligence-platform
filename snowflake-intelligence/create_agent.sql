@@ -29,7 +29,7 @@ GRANT USAGE ON CORTEX AGENT automated_intelligence.semantic.order_analytics_agen
     TO ROLE snowflake_intelligence_admin;
 
 -- Verify agent creation
-SHOW CORTEX AGENTS IN SCHEMA automated_intelligence.semantic;
+-- SHOW CORTEX AGENTS IN SCHEMA automated_intelligence.semantic;
 
 -- Test agent (optional)
 /*
