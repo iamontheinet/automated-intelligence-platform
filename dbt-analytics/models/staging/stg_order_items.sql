@@ -14,14 +14,16 @@ enriched as (
         oi.order_item_id,
         oi.order_id,
         oi.product_id,
+        oi.product_name,
+        oi.product_category,
         oi.quantity,
         oi.unit_price,
         oi.line_total,
         
-        -- Product attributes
-        p.product_name as product_name_enriched,
-        p.product_category,
+        -- Catalog enrichment from product_catalog
         p.price as catalog_price,
+        p.description as product_description,
+        p.features as product_features,
         
         -- Derived fields
         oi.unit_price - p.price as price_difference,
@@ -30,11 +32,7 @@ enriched as (
             when oi.unit_price > p.price then 'premium'
             else 'standard'
         end as pricing_type,
-        oi.line_total / nullif(oi.quantity, 0) as calculated_unit_price,
-        
-        -- Original product attributes
-        oi.product_name,
-        oi.product_category
+        oi.line_total / nullif(oi.quantity, 0) as calculated_unit_price
         
     from order_items oi
     left join products p on oi.product_id = p.product_id
