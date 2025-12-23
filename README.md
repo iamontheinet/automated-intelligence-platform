@@ -627,6 +627,22 @@ CALL automated_intelligence.raw.generate_orders(1000);
 
 **In production:** Tier 1's scheduled refresh automatically triggers Tier 2 → Tier 3. Zero manual intervention!
 
+### Dynamic Tables - Real-Time Configuration (Default)
+
+⚡ **1-minute TARGET_LAG by default** - Optimized for real-time demos and dashboards.
+
+- **Data freshness**: ~1-2 minutes from ingestion to analytics
+- **Cost**: ~1,440 warehouse refreshes/day (60/hour × 24 hours)
+- **Use case**: Live dashboards, operational monitoring, real-time insights
+
+**Want batch processing instead?** Change to 12-hour lag for 720x lower warehouse costs:
+```sql
+ALTER DYNAMIC TABLE enriched_orders SET TARGET_LAG = '12 hours';
+ALTER DYNAMIC TABLE enriched_order_items SET TARGET_LAG = '12 hours';
+```
+
+📖 **Full configuration guide**: `setup/docs/DYNAMIC_TABLE_CONFIGURATION.md`
+
 ### Interactive Warehouses
 
 - ⚠️ **5-second query timeout** (cannot be increased)
