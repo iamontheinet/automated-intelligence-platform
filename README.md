@@ -504,7 +504,6 @@ automated-intelligence/
 │   ├── business_insights_semantic_model.yaml  # Semantic model definition
 │   ├── README.md               # Setup instructions and verification
 │   ├── examples/               # Tutorials and example scripts
-│   │   ├── ai_functions_examples.sql    # AI functions (sentiment, completion, etc.)
 │   │   ├── ai_functions_notebook.ipynb  # Interactive AI functions tutorial
 │   │   ├── Dash_AI_DT.ipynb             # Dynamic Tables deep dive tutorial
 │   │   ├── test_data_quality.sql        # Data quality validation
