@@ -2,95 +2,108 @@
 
 ## 🎯 Overview
 
-This demo suite executes a full-stack data lifecycle, starting with real-time ingestion via Snowpipe Streaming (Python/Java SDKs) and optimized DML operations on Gen2 Warehouses. It utilizes Dynamic Tables for incremental pipeline transformations and Interactive Warehouses to achieve sub-100ms query latency for high-concurrency serving. The workflow incorporates batch modeling via dbt, GPU-accelerated ML training for recommendation engines, and Streamlit for live performance monitoring. The sequence culminates in Snowflake Intelligence, leveraging Cortex Agents for conversational analytics and data exploration—all secured by row-level access controls (RLAC) to ensure governed AI interactions.
+This demo suite executes a full-stack data lifecycle, starting with real-time ingestion via Snowpipe Streaming (Python/Java SDKs) and optimized DML operations on Gen2 Warehouses. It utilizes Dynamic Tables for incremental pipeline transformations and Interactive Warehouses to achieve low-latency query performance for high-concurrency serving. The workflow incorporates batch modeling via dbt in Snowflake Workspaces, GPU-accelerated ML training for recommendation engines, and Streamlit for live performance monitoring. The sequence culminates in Snowflake Intelligence, leveraging Cortex Agents for conversational analytics and data exploration—all secured by row-level access controls (RLAC) to ensure governed AI interactions.
 
 1. **Snowpipe Streaming** - Real-time ingestion using Python or Java
 2. **Gen2 Warehouse Performance** - Next-generation MERGE/UPDATE operations
 3. **Dynamic Tables Pipeline** - Zero-maintenance incremental transformations
 4. **Interactive Tables & Warehouses** - High-concurrency serving layer (sub-100ms queries)
-5. **DBT Analytics** - Batch analytical models (CLV, segmentation, cohorts)
-6. **ML Training** - GPU-accelerated product recommendation model
+5. **DBT Analytics** - Batch analytical models in Snowflake Workspaces (CLV, segmentation, cohorts)
+6. **ML Training** - GPU-accelerated product recommendation model in Snowflake Workspaces
 7. **Streamlit Dashboard** - Real-time monitoring of ingestion and performance
 8. **Snowflake Intelligence** - AI-powered conversational analytics using Cortex Agent for intuitive data exploration
 9. **Security & Governance** - Row-based access control for Cortex Agents
 
-All demos share the same foundation and work together to show an end-to-end platform.
+All demos share the same foundation and work together to show an end-to-end data lifecycle on Snowflake.
 
 ---
 
-## 🏗️ Platform Architecture
+## 🏗️ Demo Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  DEMO 1: INGESTION LAYER                                         │
-│  Snowpipe Streaming (Python/Java) → Real-time data ingestion    │
-│  • Single instance: 10K orders in 5-7 seconds                   │
-│  • 10 parallel: 10M orders in 5 minutes                         │
+│  Snowpipe Streaming (Python/Java SDK) → Real-time ingestion     │
+│  • Single to parallel instances for horizontal scaling          │
 │  • Billion-scale ready: Linear horizontal scaling               │
+│  • Sub-second latency from generation to queryable              │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
-│  DEMO 2: STAGING & TRANSFORMATION LAYER                          │
-│  Gen2 Warehouses → Staging → MERGE/UPDATE → Production          │
-│  • Faster MERGE/UPDATE/DELETE operations                        │
-│  • Production pattern: Staging → Deduplication → Raw tables     │
+│  DEMO 2: STAGING & DEDUPLICATION LAYER                           │
+│  Gen2 Warehouses → Staging → MERGE/UPDATE → Raw tables          │
+│  • Next-gen MERGE/UPDATE/DELETE performance                     │
+│  • Production pattern: Snowpipe → Staging → Dedup → Raw        │
 │  • Fair benchmarking with snapshot/restore                      │
+│  • RESOURCE_CONSTRAINT = 'STANDARD_GEN_2'                       │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
-│  DEMO 3: TRANSFORMATION LAYER                                    │
-│  Dynamic Tables (3 tiers) → Incremental transformations         │
-│  • Tier 1: Enrichment (12-hour refresh)                         │
-│  • Tier 2: Integration (DOWNSTREAM)                             │
-│  • Tier 3: Aggregation (DOWNSTREAM)                             │
+│  DEMO 3: INCREMENTAL TRANSFORMATION LAYER                        │
+│  Dynamic Tables (5 tables, 3 tiers) → Zero-maintenance          │
+│  • Tier 1 (Enrichment): 2 tables with 1-minute TARGET_LAG      │
+│    - enriched_orders, enriched_order_items                      │
+│  • Tier 2 (Integration): 1 table with DOWNSTREAM refresh       │
+│    - fact_orders (joins enriched tables)                        │
+│  • Tier 3 (Aggregation): 2 tables with DOWNSTREAM refresh      │
+│    - daily_business_metrics, product_performance_metrics        │
+│  • All tables: REFRESH_MODE = INCREMENTAL                       │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
-│  DEMO 4: SERVING LAYER                                           │
-│  Interactive Tables → High-concurrency performance               │
-│  • Sub-100ms queries under load                                  │
-│  • 100+ concurrent users                                         │
-│  • Faster than standard warehouses                               │
+│  DEMO 4: HIGH-CONCURRENCY SERVING LAYER                          │
+│  Interactive Tables + Interactive Warehouses                     │
+│  • Low-latency queries under high concurrency                   │
+│  • High concurrent user support with consistent performance     │
+│  • 2 interactive tables: customer_order_analytics, order_lookup │
+│  • No external cache needed (Redis, API database, etc.)         │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
-│  DEMO 5: ANALYTICAL LAYER                                        │
-│  DBT Analytical Models → Batch processing                       │
-│  • Customer lifetime value & segmentation                       │
-│  • Product affinity & recommendations                          │
-│  • Monthly cohort retention analysis                           │
+│  DEMO 5: BATCH ANALYTICAL LAYER                                  │
+│  Snowflake Workspaces (dbt) → Daily/weekly batch processing     │
+│  • 4 staging views in dbt_staging schema                        │
+│  • 5 analytical marts in dbt_analytics schema                   │
+│    - Customer: lifetime_value, segmentation (RFM-based)         │
+│    - Product: affinity, recommendations (market basket)         │
+│    - Cohort: monthly_cohorts (retention analysis)               │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
 │  DEMO 6: ML TRAINING LAYER                                       │
-│  GPU Workspaces → XGBoost product recommendations               │
-│  • GPU-accelerated model training                               │
-│  • Product recommendation with XGBoost                          │
-│  • Model Registry integration                                   │
+│  Snowflake Workspaces (Notebooks + GPU) → ML training           │
+│  • XGBoost product recommendation model                         │
+│  • GPU-accelerated training (tree_method='gpu_hist')            │
+│  • Large-scale training data (millions of customer-product pairs)│
+│  • Model Registry integration (version tracking)                │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
-│  DEMO 7: MONITORING LAYER                                        │
+│  DEMO 7: MONITORING & OBSERVABILITY LAYER                        │
 │  Streamlit Dashboard → Real-time pipeline monitoring            │
-│  • Live ingestion metrics                                       │
-│  • Pipeline health checks                                       │
-│  • Query performance testing                                    │
+│  • Live ingestion metrics (order/item counts, trends)           │
+│  • Gen2 vs Gen1 warehouse performance testing                   │
+│  • Dynamic Tables health & freshness checks                     │
+│  • Interactive Tables query latency testing                     │
+│  • ML model metrics & feature importance visualization          │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
 │  DEMO 8: SEMANTIC LAYER & AI INTERFACE                           │
-│  Semantic Views + Cortex Agent → Natural language queries       │
-│  • Business terminology mapping                                  │
-│  • Verified query repository (VQR)                              │
-│  • Multi-source integration                                      │
+│  Cortex Agent + Semantic Models → Natural language analytics    │
+│  • Business terminology mapping (revenue, discount rate, etc.)  │
+│  • Verified Query Repository (VQR) for accurate answers         │
+│  • Multi-table joins (orders, customers, products)              │
+│  • Date intelligence ("this month", "last quarter", "YTD")      │
 └──────────────────────────────────────────────────────────────────┘
                            ↓
 ┌──────────────────────────────────────────────────────────────────┐
-│  DEMO 9: GOVERNANCE LAYER                                        │
-│  Row Access Policies → Transparent security                      │
-│  • Role-based filtering                                          │
-│  • Agent-compatible                                              │
-│  • Zero application changes                                      │
+│  DEMO 9: GOVERNANCE & SECURITY LAYER                             │
+│  Row Access Policies → Transparent data filtering               │
+│  • Role-based row-level security (RLAC)                         │
+│  • Agent-compatible (same agent, different data views)          │
+│  • Zero application code changes required                       │
+│  • Policy-based governance (not query rewriting)                │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -107,7 +120,7 @@ Before starting, ensure you have:
   - CREATE DATABASE, CREATE SCHEMA, CREATE WAREHOUSE
   - CREATE TABLE, CREATE DYNAMIC TABLE, CREATE PROCEDURE
   - CREATE STREAMLIT, CREATE MODEL, CREATE NOTEBOOK
-  - CREATE SNOWFLAKE INTELLIGENCE ON ACCOUNT (account-level privilege for governance over AI capabilities - controls who can create Agents/Analysts)
+  - CREATE SNOWFLAKE INTELLIGENCE ON ACCOUNT
   - USAGE on DATABASE, SCHEMA, WAREHOUSE
 - **Features**: Ensure these features are enabled:
   - Dynamic Tables
@@ -216,7 +229,7 @@ See `dbt-analytics/README.md` and `dbt-analytics/DEPLOYMENT.md` for detailed set
 
 ### Optional: ML Training Setup
 
-For GPU-accelerated product recommendation model:
+For GPU-accelerated product recommendation model in Snowflake Workspaces:
 
 ```bash
 cd ml-training
@@ -233,7 +246,7 @@ jupyter notebook product_recommendation_gpu_workspace.ipynb
 ```
 
 **Prerequisites:**
-- Snowflake Notebooks in Workspaces with GPU compute pool
+- Snowflake Workspaces with GPU compute pool
 - Interactive Tables populated (for training data)
 - Medium or Large warehouse for data loading
 
@@ -271,7 +284,7 @@ cd dbt-analytics
 dbt build  # Or use native deployment (see dbt-analytics/DEPLOYMENT.md)
 
 # Demo 6: ML Training
-# Deploy notebook to Snowflake (see ml-training/README.md)
+# Deploy notebook to Snowflake Workspaces (see ml-training/README.md)
 # Or upload to Workspaces with GPU compute pool
 
 # Demo 7: Streamlit Dashboard
@@ -300,13 +313,13 @@ Choose demos based on your audience and time:
 | **1. Snowpipe Streaming** | 10-15 min | Real-time Engineers | Billion-scale ingestion |
 | **2. Gen2 Warehouse Performance** | 10-15 min | Data Engineers, Performance Teams | Faster MERGE/UPDATE operations |
 | **3. Dynamic Tables** | 15-20 min | Data Engineers, Architects | Zero-maintenance pipelines |
-| **4. Interactive Tables** | 10-15 min | App Developers, Performance Engineers | Sub-100ms query latency |
+| **4. Interactive Tables** | 10-15 min | App Developers, Performance Engineers | Low-latency serving |
 | **5. DBT Analytics** | 10-15 min | Analytics Engineers | Batch analytical models |
 | **6. ML Training** | 10-15 min | ML Engineers, Data Scientists | GPU-accelerated model training |
 | **7. Streamlit Dashboard** | Continuous | Everyone | Real-time pipeline monitoring |
 | **8. Snowflake Intelligence** | 10-15 min | Business Users, Analysts | Natural language queries |
 | **9. Security & Governance** | 10-15 min | Security Teams, Compliance | Transparent row-level security |
-| **Full Suite** | 90-120 min | Executive Demos, All-Hands | Complete platform capabilities |
+| **Full Suite** | 90-120 min | Executive Demos, All-Hands | Complete end-to-end workflow |
 
 ---
 
@@ -324,7 +337,7 @@ Choose demos based on your audience and time:
 ```bash
 # 1. Stream data to staging tables
 cd snowpipe-streaming-python
-python src/automated_intelligence_streaming.py --config config_staging.properties --num-orders 100000
+python src/automated_intelligence_streaming.py --config config_staging.properties --num-orders <desired-amount>
 
 # 2. Run Gen2 vs Gen1 comparison test
 cd ../streamlit-dashboard
@@ -335,7 +348,7 @@ streamlit run streamlit_app.py --server.port 8501
 
 **Architecture:**
 ```
-Snowpipe Streaming (5-10s latency)
+Snowpipe Streaming (low latency)
        ↓
 staging.* tables (append-only)
        ↓
@@ -344,7 +357,7 @@ Gen2 MERGE/UPDATE (deduplicate, upsert, enrich)
 raw.* tables (production)
 ```
 
-**Expected results (100K orders streamed):**
+**Expected results:**
 
 Gen2 warehouses typically show performance improvements on MERGE/UPDATE operations compared to Gen1. Specific improvements vary based on workload characteristics, data volume, and query patterns.
 
@@ -369,7 +382,7 @@ Gen2 warehouses typically show performance improvements on MERGE/UPDATE operatio
 ### DEMO 6: ML Training - GPU-Accelerated Product Recommendations
 
 **What it demonstrates:**
-- GPU-accelerated ML model training in Snowflake Notebooks (Workspaces)
+- GPU-accelerated ML model training in Snowflake Workspaces
 - XGBoost product recommendation model
 - Snowflake Model Registry integration
 - Large-scale training (millions of samples)
@@ -390,8 +403,8 @@ cd ml-training
 - **Use Case**: Predict which products customers are likely to purchase
 - **Features**: Customer behavior metrics + product popularity metrics
 - **Algorithm**: XGBoost with GPU acceleration (`tree_method='gpu_hist'`)
-- **Training Data**: ~5M customer-product pairs
-- **Model Complexity**: 1000 trees, max depth 20
+- **Training Data**: Millions of customer-product pairs
+- **Model Complexity**: Deep XGBoost trees optimized for accuracy
 
 **Expected results:**
 - **Precision**: High accuracy on product recommendations
@@ -412,7 +425,7 @@ cd ml-training
 ### DEMO 5: DBT Analytics - Batch Analytical Models
 
 **What it demonstrates:**
-- Batch-processed analytical models complementing real-time Dynamic Tables
+- Batch-processed analytical models in Snowflake Workspaces complementing real-time Dynamic Tables
 - Customer lifetime value and segmentation
 - Product affinity and recommendations
 - Monthly cohort retention analysis
@@ -481,7 +494,7 @@ SELECT name, refresh_action, duration_seconds
 FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY(...));
 ```
 
-**Key insight:** All refreshes show `INCREMENTAL` - only 500 new orders processed, not entire dataset!
+**Key insight:** All refreshes show `INCREMENTAL` - only new data processed, not entire dataset!
 
 **See:** `DEMO_SCRIPT.md` (Demo 2) for complete step-by-step guide
 
@@ -490,22 +503,22 @@ FROM TABLE(INFORMATION_SCHEMA.DYNAMIC_TABLE_REFRESH_HISTORY(...));
 ### DEMO 4: Interactive Tables & Warehouses
 
 **What it demonstrates:**
-- Sub-100ms query latency under high concurrency
+- Low query latency under high concurrency
 - Performance improvement over standard warehouses
 - Complete native stack (no Redis, no external API database)
 
 **Quick start:**
 ```bash
 cd interactive
-./demo.sh --threads 150 --warehouse both
+./demo.sh --threads <concurrent-threads> --warehouse both
 ```
 
 **Sample queries displayed:**
-- CUSTOMER_LOOKUP (50%): Point lookup by customer_id
-- ORDER_LOOKUP (30%): Point lookup by order_id  
-- CUSTOMER_SUMMARY (20%): Aggregation by customer_id
+- CUSTOMER_LOOKUP: Point lookup by customer_id
+- ORDER_LOOKUP: Point lookup by order_id  
+- CUSTOMER_SUMMARY: Aggregation by customer_id
 
-**Expected results (150 threads, 500 queries, 21M orders):**
+**Expected results:**
 
 Interactive warehouses provide improved query performance under high concurrency compared to standard warehouses. Results vary based on workload patterns, query complexity, and data volume.
 
@@ -526,14 +539,14 @@ Interactive warehouses provide improved query performance under high concurrency
 ```bash
 cd snowpipe-streaming-python
 
-# Single instance (10K orders)
-python src/automated_intelligence_streaming.py 10000
+# Single instance
+python src/automated_intelligence_streaming.py <num-orders>
 
-# Parallel (1M orders, 5 instances)
-python src/parallel_streaming_orchestrator.py 1000000 5
+# Parallel instances
+python src/parallel_streaming_orchestrator.py <total-orders> <num-instances>
 
-# Large scale (10M orders, 10 instances)
-python src/parallel_streaming_orchestrator.py 10000000 10
+# Large scale
+python src/parallel_streaming_orchestrator.py <total-orders> <num-instances>
 ```
 
 #### Option 2: Java
@@ -543,18 +556,18 @@ cd snowpipe-streaming-java
 # Build
 mvn clean install
 
-# Single instance (10K orders)
-java -jar target/automated-intelligence-streaming-1.0.0.jar 10000
+# Single instance
+java -jar target/automated-intelligence-streaming-1.0.0.jar <num-orders>
 
-# Parallel (1M orders, 5 instances)
-java ParallelStreamingOrchestrator 1000000 5
+# Parallel instances
+java ParallelStreamingOrchestrator <total-orders> <num-instances>
 ```
 
-**Performance benchmarks:**
-- Single instance: 10K orders in 5-7 seconds
-- 5 parallel: 1M orders in under a minute
-- 10 parallel: 10M orders in a few minutes
-- Billion-scale: 1B orders achievable with 50+ instances
+**Performance characteristics:**
+- Single instance: Fast ingestion with low latency
+- Parallel instances: Linear scaling for high throughput
+- Large-scale: Horizontal scaling to handle massive volumes
+- Billion-scale: Achievable with sufficient parallel instances
 
 **See:** 
 - Python: `snowpipe-streaming-python/README.md` and `COMPARISON.md`
@@ -752,7 +765,7 @@ ORDER BY table_name;
 
 ---
 
-## 🎯 Complete Platform Summary
+## 🎯 Complete Demo Summary
 
 After running all demos, you've demonstrated:
 
@@ -764,25 +777,25 @@ After running all demos, you've demonstrated:
 - ✅ Dynamic Tables: Incremental refresh, automatic dependencies, zero maintenance
 
 **Data Serving:**
-- ✅ Interactive Tables: Sub-100ms queries, high concurrency, no external cache
+- ✅ Interactive Tables: Low-latency queries, high concurrency, no external cache
 
 **Data Governance:**
 - ✅ Row Access Policies: Transparent security, role-based filtering, agent-compatible
 
 **ML & Analytics:**
 - ✅ GPU Workspaces: GPU-accelerated model training, Model Registry integration
-- ✅ DBT Analytics: Customer segmentation, product affinity, cohort analysis
+- ✅ DBT Analytics: Customer segmentation, product affinity, cohort analysis in Snowflake Workspaces
 
 **AI-Powered Analytics:**
 - ✅ Semantic Views: Business terminology mapping, verified queries, multi-source integration
 - ✅ Cortex Agent: Natural language queries, intelligent orchestration, visualization
 - ✅ Cortex Search: Semantic product discovery, description-based search
 
-**Platform Benefits:**
+**Snowflake Capabilities Demonstrated:**
 - ✅ Fully native stack - no external systems required
 - ✅ Set-and-forget automation - minimal operational overhead
 - ✅ Linear scalability - from thousands to billions of records
-- ✅ Enterprise-grade security - built into the data platform
+- ✅ Enterprise-grade security - built into Snowflake
 - ✅ Natural language interface - business users query data without SQL
 
 ---
@@ -944,8 +957,8 @@ Solution: Verify source tables exist
 **Issue: All customers show as high_value**
 ```
 Solution: Adjust thresholds in dbt_project.yml
-- high_value_threshold: 17500 (75th percentile)
-- active_customer_days: 21 (median recency)
+- high_value_threshold: Configurable based on your data distribution
+- active_customer_days: Configurable based on your business logic
 - Rebuild models: dbt run --select customer_lifetime_value customer_segmentation
 ```
 
@@ -1000,7 +1013,7 @@ Solution: Multiple factors
 ```
 Solution: Old data may have this issue
 - Fixed in setup.sql (lines 181-216)
-- Generate fresh data: CALL automated_intelligence.raw.generate_orders(1000);
+- Generate fresh data: CALL automated_intelligence.raw.generate_orders(<num-orders>);
 - New data will have consistent product relationships
 ```
 
@@ -1270,7 +1283,7 @@ done
 
 ## 🎓 Learning Path
 
-**New to the platform?** Follow this sequence:
+**New to the demos?** Follow this sequence:
 
 1. **Start with setup** - Run all setup scripts once
 2. **Demo 4: Snowpipe Streaming** - Scale ingestion to millions
@@ -1280,7 +1293,7 @@ done
 6. **Demo 5: Security & Governance** - Lock down with row-level security
 7. **Optional: AI Observability** - Evaluate AI analytics quality
 
-**For executives:** Run the Full Suite (45-60 min) to show complete platform capabilities.
+**For executives:** Run the Full Suite (45-60 min) to show complete end-to-end capabilities.
 
 **For technical teams:** Deep dive into specific demos based on their domain (data engineering, app development, security, etc.)
 
