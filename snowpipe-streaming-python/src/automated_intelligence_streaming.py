@@ -52,12 +52,13 @@ class AutomatedIntelligenceStreaming:
             
             for i in range(current_batch_size):
                 customer_id = DataGenerator.random_customer_id(max_customer_id)
-                order = DataGenerator.generate_order(customer_id)
+                customer_segment = self.streaming_manager.get_customer_segment(customer_id)
+                order = DataGenerator.generate_order(customer_id, customer_segment)
                 order_batch.append(order)
                 
-                item_count = DataGenerator.random_item_count()
+                item_count = DataGenerator.random_item_count(customer_segment)
                 order_items = DataGenerator.generate_order_items(
-                    order.order_id, item_count
+                    order.order_id, customer_segment, item_count
                 )
                 all_order_items.extend(order_items)
             

@@ -11,8 +11,8 @@ snow sql -f setup.sql -c dash-builder-si
 
 ## Files
 
-- `business_insights_semantic_model.yaml` - Semantic model definition for Cortex Analyst
-- `create_agent.sql` - Creates Cortex Agent for natural language queries
+- `business_insights_semantic_model.yaml` - Semantic model definition for Cortex Analyst (uses logical table names for verified queries)
+- `create_agent.sql` - Creates Cortex Agent in `AUTOMATED_INTELLIGENCE.SEMANTIC` schema for natural language queries
 - `create_cortex_search.sql` - Creates Cortex Search service for product discovery
 
 ## Setup Instructions
@@ -38,11 +38,14 @@ snow sql -f snowflake-intelligence/create_cortex_search.sql -c dash-builder-si
 ### Semantic Model Stage
 - **Stage**: `automated_intelligence.raw.semantic_models`
 - Stores YAML semantic model files for Cortex Analyst
+- **Note**: Verified queries use logical table names (e.g., `orders`, `daily_business_metrics`) instead of physical table names
 
 ### Cortex Agent
 - **Agent**: `automated_intelligence.semantic.order_analytics_agent`
+- Created in the `SEMANTIC` schema using `AUTOMATED_INTELLIGENCE` role
 - Enables natural language queries over order data
 - Uses semantic model for context-aware SQL generation
+- Requires `CREATE SNOWFLAKE INTELLIGENCE ON ACCOUNT` privilege
 
 ### Cortex Search Service
 - **Service**: `automated_intelligence.raw.product_search_service`
@@ -58,6 +61,7 @@ LIST @automated_intelligence.raw.semantic_models;
 
 ### Test Cortex Agent
 ```sql
+USE ROLE AUTOMATED_INTELLIGENCE;
 USE DATABASE automated_intelligence;
 USE SCHEMA semantic;
 
@@ -65,6 +69,12 @@ USE SCHEMA semantic;
 SELECT SNOWFLAKE.CORTEX.COMPLETE(
   'order_analytics_agent',
   'What were the top 5 products by revenue last month?'
+);
+
+-- Test discount analysis (now working with updated semantic model)
+SELECT SNOWFLAKE.CORTEX.COMPLETE(
+  'order_analytics_agent',
+  'What is the impact of discounts on revenue?'
 );
 ```
 

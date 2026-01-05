@@ -94,9 +94,9 @@ vars:
 ## Setup
 
 ### Prerequisites
-1. Snowflake account with necessary privileges
+1. Snowflake account with `AUTOMATED_INTELLIGENCE` role and necessary privileges
 2. Database and schemas created (`dbt_staging`, `dbt_analytics`)
-3. Raw data tables populated in `automated_intelligence.raw` schema
+3. Raw data tables populated in `automated_intelligence.raw` schema with segment-based orders (Premium, Standard, Basic)
 4. Snowflake CLI installed (for deployment) - [Installation Guide](https://docs.snowflake.com/en/developer-guide/snowflake-cli/index)
 
 ### Deployment Options

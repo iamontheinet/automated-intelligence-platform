@@ -5,7 +5,7 @@
 -- Perfect for showing how the same agent gives different answers based on role
 -- ============================================================================
 
-USE ROLE SNOWFLAKE_INTELLIGENCE_ADMIN;
+USE ROLE AUTOMATED_INTELLIGENCE;
 USE DATABASE AUTOMATED_INTELLIGENCE;
 USE SCHEMA AUTOMATED_INTELLIGENCE.RAW;
 USE WAREHOUSE AUTOMATED_INTELLIGENCE_WH;
@@ -47,7 +47,7 @@ CREATE OR REPLACE ROW ACCESS POLICY customers_region_policy
 AS (state VARCHAR) RETURNS BOOLEAN ->
     CASE 
         -- Admin roles see everything
-        WHEN CURRENT_ROLE() IN ('SNOWFLAKE_INTELLIGENCE_ADMIN', 'ACCOUNTADMIN') THEN TRUE
+        WHEN CURRENT_ROLE() IN ('AUTOMATED_INTELLIGENCE', 'ACCOUNTADMIN') THEN TRUE
         -- West Coast Manager sees only their region
         WHEN CURRENT_ROLE() = 'WEST_COAST_MANAGER' 
              AND state IN ('CA', 'OR', 'WA') THEN TRUE

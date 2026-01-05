@@ -8,7 +8,7 @@ Perfect demo for showcasing **Row-Based Access Control** with Snowflake Intellig
 
 | Role | States Visible | Revenue | Customers |
 |------|---------------|---------|-----------|
-| **SNOWFLAKE_INTELLIGENCE_ADMIN** | All 10 states (BC, CA, CO, ID, MT, NV, OR, UT, WA, WY) | $733M | 20,200 |
+| **AUTOMATED_INTELLIGENCE** | All 10 states (BC, CA, CO, ID, MT, NV, OR, UT, WA, WY) | $733M | 20,200 |
 | **WEST_COAST_MANAGER** | Only 3 states (CA, OR, WA) | $224M | 6,115 |
 
 **Key Insight:** Same Business Insights Agent, dramatically different answers!
@@ -55,7 +55,7 @@ Open **Snowflake Intelligence** in two browser tabs/windows:
 
 **Tab 1 (Admin):**
 ```
-Use role: SNOWFLAKE_INTELLIGENCE_ADMIN
+Use role: AUTOMATED_INTELLIGENCE
 Ask: "What's our total revenue?"
 Result: ~$733M (all 10 states)
 ```
@@ -132,7 +132,7 @@ West Coast sees: OR ($75M), CA ($75M), WA ($73M)
 CREATE OR REPLACE ROW ACCESS POLICY customers_region_policy
 AS (state VARCHAR) RETURNS BOOLEAN ->
     CASE 
-        WHEN CURRENT_ROLE() IN ('SNOWFLAKE_INTELLIGENCE_ADMIN', 'ACCOUNTADMIN') 
+        WHEN CURRENT_ROLE() IN ('AUTOMATED_INTELLIGENCE', 'ACCOUNTADMIN') 
             THEN TRUE
         WHEN CURRENT_ROLE() = 'WEST_COAST_MANAGER' 
              AND state IN ('CA', 'OR', 'WA') 
@@ -289,7 +289,7 @@ CREATE ROLE mountain_region_manager;
 CREATE OR REPLACE ROW ACCESS POLICY customers_region_policy
 AS (state VARCHAR) RETURNS BOOLEAN ->
     CASE 
-        WHEN CURRENT_ROLE() IN ('SNOWFLAKE_INTELLIGENCE_ADMIN', 'ACCOUNTADMIN') 
+        WHEN CURRENT_ROLE() IN ('AUTOMATED_INTELLIGENCE', 'ACCOUNTADMIN') 
             THEN TRUE
         WHEN CURRENT_ROLE() = 'WEST_COAST_MANAGER' 
              AND state IN ('CA', 'OR', 'WA') THEN TRUE
@@ -306,7 +306,7 @@ AS (state VARCHAR) RETURNS BOOLEAN ->
 CREATE OR REPLACE ROW ACCESS POLICY customers_region_time_policy
 AS (state VARCHAR, order_date DATE) RETURNS BOOLEAN ->
     CASE 
-        WHEN CURRENT_ROLE() IN ('SNOWFLAKE_INTELLIGENCE_ADMIN', 'ACCOUNTADMIN') 
+        WHEN CURRENT_ROLE() IN ('AUTOMATED_INTELLIGENCE', 'ACCOUNTADMIN') 
             THEN TRUE
         WHEN CURRENT_ROLE() = 'WEST_COAST_MANAGER' 
              AND state IN ('CA', 'OR', 'WA')

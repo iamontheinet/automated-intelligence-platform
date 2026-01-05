@@ -11,6 +11,10 @@ This application streams synthetic e-commerce data (customers, orders, and order
 - **Parallel streaming** with multiple concurrent instances
 - **Resumable ingestion** from last committed offset
 - **Same business logic** as the Java implementation
+- **Segment-based order generation**: Orders vary by customer segment (Premium, Standard, Basic)
+  - Premium: $500-$3000 orders, 10% discount rate (5-10% off), 3-8 items/order
+  - Standard: $100-$800 orders, 40% discount rate (5-20% off), 2-5 items/order
+  - Basic: $20-$300 orders, 50% discount rate (10-30% off), 1-3 items/order
 
 ## Architecture
 
@@ -47,9 +51,10 @@ pip install -r requirements.txt
 
 ### 2. Create Snowflake PIPE Objects
 
-Run the following SQL in Snowflake:
+Run the following SQL in Snowflake using the `AUTOMATED_INTELLIGENCE` role:
 
 ```sql
+USE ROLE AUTOMATED_INTELLIGENCE;
 USE DATABASE AUTOMATED_INTELLIGENCE;
 USE SCHEMA RAW;
 
@@ -92,7 +97,8 @@ Edit `profile.json`:
   "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----",
   "database": "AUTOMATED_INTELLIGENCE",
   "schema": "RAW",
-  "warehouse": "COMPUTE_WH"
+  "warehouse": "AUTOMATED_INTELLIGENCE_WH",
+  "role": "AUTOMATED_INTELLIGENCE"
 }
 ```
 

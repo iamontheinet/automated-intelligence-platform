@@ -51,4 +51,8 @@ public class Customer {
     public int getCustomerId() {
         return customerId;
     }
+
+    public String getCustomerSegment() {
+        return customerSegment;
+    }
 }

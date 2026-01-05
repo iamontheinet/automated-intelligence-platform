@@ -89,7 +89,7 @@ public class DataGenerator {
                 city, state, zipCode, regDate.format(DATE_FORMATTER), customerSegment);
     }
 
-    public static Order generateOrder(int customerId) {
+    public static Order generateOrder(int customerId, String customerSegment) {
         String orderId = UUID.randomUUID().toString();
         
         // Spread orders across different times of day (not just noon)
@@ -118,21 +118,38 @@ public class DataGenerator {
             orderStatus = "Cancelled";
         }
         
-        // More variation in order values using log-normal distribution
-        double baseAmount = Math.exp(random.nextGaussian() * 1.2 + 5.0);  // Mean ~$150, wide range
-        double minAmount = Math.max(10.0, baseAmount);
-        double maxAmount = Math.max(50.0, baseAmount * 1.5);
-        BigDecimal totalAmount = randomDecimal(minAmount, maxAmount);
+        // Segment-based order amounts
+        BigDecimal totalAmount;
+        BigDecimal discountPercent;
         
-        BigDecimal discountPercent = random.nextInt(10) > 7 ?
-                new BigDecimal(random.nextInt(21) + 5) : BigDecimal.ZERO;
+        switch (customerSegment) {
+            case "Premium":
+                // Premium: $500-$3000, rarely discounted (10% chance, 5-10% off)
+                totalAmount = randomDecimal(500.0, 3000.0);
+                discountPercent = random.nextInt(10) > 8 ?
+                    new BigDecimal(random.nextInt(6) + 5) : BigDecimal.ZERO;
+                break;
+            case "Standard":
+                // Standard: $100-$800, moderate discounts (40% chance, 5-20% off)
+                totalAmount = randomDecimal(100.0, 800.0);
+                discountPercent = random.nextInt(10) > 5 ?
+                    new BigDecimal(random.nextInt(16) + 5) : BigDecimal.ZERO;
+                break;
+            default:  // Basic
+                // Basic: $20-$300, frequent discounts (50% chance, 10-30% off)
+                totalAmount = randomDecimal(20.0, 300.0);
+                discountPercent = random.nextInt(10) > 4 ?
+                    new BigDecimal(random.nextInt(21) + 10) : BigDecimal.ZERO;
+                break;
+        }
+        
         BigDecimal shippingCost = randomDecimal(5.0, 50.0);
 
         return new Order(orderId, customerId, orderDate.format(DATETIME_FORMATTER),
                 orderStatus, totalAmount, discountPercent, shippingCost);
     }
 
-    public static List<OrderItem> generateOrderItems(String orderId, int count) {
+    public static List<OrderItem> generateOrderItems(String orderId, String customerSegment, int count) {
         List<OrderItem> items = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             String orderItemId = UUID.randomUUID().toString();
@@ -142,8 +159,25 @@ public class DataGenerator {
             String productName = PRODUCT_NAMES[productIndex];
             String productCategory = PRODUCT_CATEGORIES[productIndex];
             
-            int quantity = random.nextInt(5) + 1;
-            BigDecimal unitPrice = randomDecimal(10.0, 500.0);
+            // Segment-based quantity
+            int quantity;
+            BigDecimal unitPrice;
+            
+            switch (customerSegment) {
+                case "Premium":
+                    quantity = random.nextInt(4) + 2;  // 2-5
+                    unitPrice = randomDecimal(150.0, 500.0);
+                    break;
+                case "Standard":
+                    quantity = random.nextInt(3) + 1;  // 1-3
+                    unitPrice = randomDecimal(50.0, 250.0);
+                    break;
+                default:  // Basic
+                    quantity = random.nextInt(2) + 1;  // 1-2
+                    unitPrice = randomDecimal(10.0, 100.0);
+                    break;
+            }
+            
             BigDecimal lineTotal = unitPrice.multiply(new BigDecimal(quantity)).setScale(2, RoundingMode.HALF_UP);
 
             items.add(new OrderItem(orderItemId, orderId, productId, productName,
@@ -161,7 +195,14 @@ public class DataGenerator {
         return new BigDecimal(value).setScale(2, RoundingMode.HALF_UP);
     }
 
-    public static int randomItemCount() {
-        return random.nextInt(10) + 1;
+    public static int randomItemCount(String customerSegment) {
+        switch (customerSegment) {
+            case "Premium":
+                return random.nextInt(6) + 3;  // 3-8 items
+            case "Standard":
+                return random.nextInt(4) + 2;  // 2-5 items
+            default:  // Basic
+                return random.nextInt(3) + 1;  // 1-3 items
+        }
     }
 }

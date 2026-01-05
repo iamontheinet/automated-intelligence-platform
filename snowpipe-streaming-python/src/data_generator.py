@@ -86,7 +86,7 @@ class DataGenerator:
         )
 
     @staticmethod
-    def generate_order(customer_id: int) -> Order:
+    def generate_order(customer_id: int, customer_segment: str) -> Order:
         order_id = str(uuid.uuid4())
         
         # Spread orders across different times of day (not just noon)
@@ -109,15 +109,32 @@ class DataGenerator:
         else:  # 3% cancelled
             order_status = "Cancelled"
         
-        # More variation in order values using log-normal distribution
-        base_amount = random.lognormvariate(5.0, 1.2)  # Mean ~$150, but wide range
-        total_amount = DataGenerator._random_decimal(max(10.0, base_amount), max(50.0, base_amount * 1.5))
+        # Segment-based order amounts and discounts
+        if customer_segment == "Premium":
+            # Premium: $500-$3000, rarely discounted (10% chance, 5-10% off)
+            total_amount = DataGenerator._random_decimal(500.0, 3000.0)
+            discount_percent = (
+                Decimal(random.randint(5, 10))
+                if random.randint(1, 10) > 9
+                else Decimal(0)
+            )
+        elif customer_segment == "Standard":
+            # Standard: $100-$800, moderate discounts (40% chance, 5-20% off)
+            total_amount = DataGenerator._random_decimal(100.0, 800.0)
+            discount_percent = (
+                Decimal(random.randint(5, 20))
+                if random.randint(1, 10) > 6
+                else Decimal(0)
+            )
+        else:  # Basic
+            # Basic: $20-$300, frequent discounts (50% chance, 10-30% off)
+            total_amount = DataGenerator._random_decimal(20.0, 300.0)
+            discount_percent = (
+                Decimal(random.randint(10, 30))
+                if random.randint(1, 10) > 5
+                else Decimal(0)
+            )
         
-        discount_percent = (
-            Decimal(random.randint(5, 25))
-            if random.randint(1, 10) > 7
-            else Decimal(0)
-        )
         shipping_cost = DataGenerator._random_decimal(5.0, 50.0)
         
         return Order(
@@ -131,7 +148,7 @@ class DataGenerator:
         )
 
     @staticmethod
-    def generate_order_items(order_id: str, count: int) -> List[OrderItem]:
+    def generate_order_items(order_id: str, customer_segment: str, count: int) -> List[OrderItem]:
         items = []
         for i in range(count):
             order_item_id = str(uuid.uuid4())
@@ -141,8 +158,17 @@ class DataGenerator:
             product_name = DataGenerator.PRODUCT_NAMES[product_index]
             product_category = DataGenerator.PRODUCT_CATEGORIES[product_index]
             
-            quantity = random.randint(1, 5)
-            unit_price = DataGenerator._random_decimal(10.0, 500.0)
+            # Segment-based quantity and pricing
+            if customer_segment == "Premium":
+                quantity = random.randint(2, 5)
+                unit_price = DataGenerator._random_decimal(150.0, 500.0)
+            elif customer_segment == "Standard":
+                quantity = random.randint(1, 3)
+                unit_price = DataGenerator._random_decimal(50.0, 250.0)
+            else:  # Basic
+                quantity = random.randint(1, 2)
+                unit_price = DataGenerator._random_decimal(10.0, 100.0)
+            
             line_total = unit_price * Decimal(quantity)
             line_total = line_total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             
@@ -166,5 +192,10 @@ class DataGenerator:
         return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     @staticmethod
-    def random_item_count() -> int:
-        return random.randint(1, 10)
+    def random_item_count(customer_segment: str) -> int:
+        if customer_segment == "Premium":
+            return random.randint(3, 8)  # 3-8 items
+        elif customer_segment == "Standard":
+            return random.randint(2, 5)  # 2-5 items
+        else:  # Basic
+            return random.randint(1, 3)  # 1-3 items

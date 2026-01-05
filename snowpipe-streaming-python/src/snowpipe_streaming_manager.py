@@ -28,7 +28,7 @@ class SnowpipeStreamingManager:
             "user": config.get_snowflake_user(),
             "private_key": config.get_private_key(),
             "url": config.get_snowflake_url(),
-            "role": "SNOWFLAKE_INTELLIGENCE_ADMIN",
+            "role": "AUTOMATED_INTELLIGENCE",
             "warehouse": config.get_warehouse(),
         }
         
@@ -85,7 +85,7 @@ class SnowpipeStreamingManager:
         conn_params = {
             "account": self.config.get_snowflake_account(),
             "user": self.config.get_snowflake_user(),
-            "role": "SNOWFLAKE_INTELLIGENCE_ADMIN",
+            "role": "AUTOMATED_INTELLIGENCE",
             "warehouse": self.config.get_warehouse(),
             "database": self.config.get_database(),
             "schema": self.config.get_schema(),

@@ -5,7 +5,7 @@
 -- Run after: setup_interactive.sql
 -- ============================================================================
 
-USE ROLE SNOWFLAKE_INTELLIGENCE_ADMIN;
+USE ROLE AUTOMATED_INTELLIGENCE;
 
 USE DATABASE automated_intelligence;
 USE WAREHOUSE automated_intelligence_interactive_wh;

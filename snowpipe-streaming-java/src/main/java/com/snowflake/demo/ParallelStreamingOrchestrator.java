@@ -240,11 +240,12 @@ class PartitionedStreamingApp {
             
             for (int i = 0; i < currentBatchSize; i++) {
                 int customerId = DataGenerator.randomCustomerIdInRange(customerIdStart, customerIdEnd);
-                Order order = DataGenerator.generateOrder(customerId);
+                String customerSegment = streamingManager.getCustomerSegment(customerId);
+                Order order = DataGenerator.generateOrder(customerId, customerSegment);
                 orderBatch.add(order);
                 
-                int itemCount = DataGenerator.randomItemCount();
-                List<OrderItem> orderItems = DataGenerator.generateOrderItems(order.getOrderId(), itemCount);
+                int itemCount = DataGenerator.randomItemCount(customerSegment);
+                List<OrderItem> orderItems = DataGenerator.generateOrderItems(order.getOrderId(), customerSegment, itemCount);
                 allOrderItems.addAll(orderItems);
             }
             

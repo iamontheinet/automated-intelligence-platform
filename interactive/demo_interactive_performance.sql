@@ -6,7 +6,7 @@
 -- Duration: 5-7 minutes
 -- ============================================================================
 
-USE ROLE SNOWFLAKE_INTELLIGENCE_ADMIN;
+USE ROLE AUTOMATED_INTELLIGENCE;
 
 -- ============================================================================
 -- PART 1: Baseline - Query Standard Tables

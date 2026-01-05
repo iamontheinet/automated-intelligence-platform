@@ -2,16 +2,42 @@
 -- Automated Intelligence - Complete Setup Script
 -- 
 -- Execution Order:
---   0. Clean up existing objects (WIPE SLATE)
---   1. Setup database, schemas, and warehouse
---   2. Create raw tables (customers, orders, order_items)
---   3. Create stored procedures for data generation
---   4. Create dynamic tables (3-tier pipeline)
+--   0. PREREQUISITES: Grant account-level privileges (ACCOUNTADMIN only)
+--   1. Clean up existing objects (WIPE SLATE)
+--   2. Setup database, schemas, and warehouse
+--   3. Create raw tables (customers, orders, order_items)
+--   4. Create stored procedures for data generation
+--   5. Create dynamic tables (3-tier pipeline)
 --
--- Run this entire script to set up the complete demo environment
+-- IMPORTANT: Run PREREQUISITES section first as ACCOUNTADMIN, then the rest
 -- ============================================================================
 
-USE ROLE SNOWFLAKE_INTELLIGENCE_ADMIN;
+-- ============================================================================
+-- PREREQUISITES: ACCOUNTADMIN GRANTS (Run as ACCOUNTADMIN first)
+-- ============================================================================
+-- This section MUST be run as ACCOUNTADMIN before executing the rest of the script.
+-- 
+-- CREATE SNOWFLAKE INTELLIGENCE ON ACCOUNT is an account-level privilege that controls 
+-- who can create Snowflake Intelligence objects (Agents, Analysts) within your account.
+-- This ensures proper governance over AI capabilities through:
+--   - Security: Only authorized roles can create Intelligence objects
+--   - Controlled Rollout: Administrators control which roles manage Snowflake Intelligence
+--   - Layered Permissions: Additional USAGE/ALTER privileges control object access after creation
+
+USE ROLE ACCOUNTADMIN;
+
+-- Create the role for managing automated intelligence platform
+CREATE ROLE IF NOT EXISTS AUTOMATED_INTELLIGENCE
+  COMMENT = 'Role for managing the Automated Intelligence platform including databases, warehouses, dynamic tables, and Snowflake Intelligence objects';
+
+-- Grant Snowflake Intelligence privilege to allow creation of AI agents and analysts
+GRANT CREATE SNOWFLAKE INTELLIGENCE ON ACCOUNT TO ROLE AUTOMATED_INTELLIGENCE;
+
+-- ============================================================================
+-- MAIN SETUP: Switch to AUTOMATED_INTELLIGENCE role
+-- ============================================================================
+-- After running the PREREQUISITES section above, execute the rest with this role
+USE ROLE AUTOMATED_INTELLIGENCE;
 
 -- ============================================================================
 -- STEP 0: WIPE SLATE - Drop all existing objects
@@ -88,7 +114,6 @@ DROP TABLE IF EXISTS staging.discount_snapshot;
 -- DROP TABLE IF EXISTS analytics_iceberg.orders;
 
 -- Drop stored procedures
-DROP PROCEDURE IF EXISTS raw.generate_orders(INT);
 DROP PROCEDURE IF EXISTS raw.generate_customers(INT);
 DROP PROCEDURE IF EXISTS staging.merge_staging_to_raw(BOOLEAN);
 DROP PROCEDURE IF EXISTS staging.merge_staging_to_raw(VARCHAR, BOOLEAN);
@@ -251,181 +276,6 @@ BEGIN
 END;
 $$;
 
--- Procedure: generate_orders
--- Purpose: Generate orders, order items, reviews, and support tickets from existing customers
--- Parameters: num_orders - Number of new orders to create
--- Note: Requires existing customers - run generate_customers() first if needed
-CREATE OR REPLACE PROCEDURE generate_orders(num_orders INT)
-RETURNS STRING
-LANGUAGE SQL
-AS
-$$
-BEGIN
-    LET customer_count INT := (SELECT COUNT(*) FROM customers);
-    
-    IF (:customer_count = 0) THEN
-        RETURN 'Error: No customers exist. Please run generate_customers() first.';
-    END IF;
-    
-    -- Generate orders with random customer assignment
-    -- Use HASH on GENERATOR sequence for true random distribution across customers
-    INSERT INTO orders
-    WITH numbered_customers AS (
-        SELECT customer_id, ROW_NUMBER() OVER (ORDER BY customer_id) as rn
-        FROM customers
-    ),
-    order_gen AS (
-        SELECT 
-            SEQ4() as seq,
-            MOD(ABS(HASH(SEQ4())), :customer_count) + 1 as customer_rn
-        FROM TABLE(GENERATOR(ROWCOUNT => :num_orders))
-    )
-    SELECT
-        UUID_STRING() AS order_id,
-        nc.customer_id,
-        DATEADD(day, -UNIFORM(1, 365, RANDOM()), CURRENT_TIMESTAMP()) AS order_date,
-        CASE UNIFORM(1, 5, RANDOM())
-            WHEN 1 THEN 'Completed'
-            WHEN 2 THEN 'Pending'
-            WHEN 3 THEN 'Shipped'
-            WHEN 4 THEN 'Cancelled'
-            ELSE 'Processing'
-        END AS order_status,
-        ROUND(UNIFORM(10, 5000, RANDOM()), 2) AS total_amount,
-        CASE WHEN UNIFORM(1, 10, RANDOM()) > 7 THEN UNIFORM(5, 25, RANDOM()) ELSE 0 END AS discount_percent,
-        ROUND(UNIFORM(5, 50, RANDOM()), 2) AS shipping_cost
-    FROM order_gen og
-    JOIN numbered_customers nc ON og.customer_rn = nc.rn;
-    
-    INSERT INTO order_items
-    WITH new_orders AS (
-        SELECT order_id, order_date
-        FROM orders
-        ORDER BY order_date DESC
-        LIMIT :num_orders
-    ),
-    order_item_counts AS (
-        SELECT
-            order_id,
-            UNIFORM(1, 10, RANDOM()) AS items_count
-        FROM new_orders
-    ),
-    expanded_orders AS (
-        SELECT
-            o.order_id,
-            ROW_NUMBER() OVER (PARTITION BY o.order_id ORDER BY RANDOM()) AS item_seq
-        FROM order_item_counts o
-        CROSS JOIN (
-            SELECT SEQ4() AS item_num FROM TABLE(GENERATOR(ROWCOUNT => 10))
-        ) numbers
-        WHERE numbers.item_num < o.items_count
-    ),
-    product_mapping AS (
-        SELECT 1 as product_num, 1001 as product_id, 'Powder Skis' as product_name, 'Skis' as product_category
-        UNION ALL SELECT 2, 1002, 'All-Mountain Skis', 'Skis'
-        UNION ALL SELECT 3, 1003, 'Freestyle Snowboard', 'Snowboards'
-        UNION ALL SELECT 4, 1004, 'Freeride Snowboard', 'Snowboards'
-        UNION ALL SELECT 5, 1005, 'Ski Boots', 'Boots'
-        UNION ALL SELECT 6, 1006, 'Snowboard Boots', 'Boots'
-        UNION ALL SELECT 7, 1007, 'Ski Poles', 'Accessories'
-        UNION ALL SELECT 8, 1008, 'Ski Goggles', 'Accessories'
-        UNION ALL SELECT 9, 1009, 'Snowboard Bindings', 'Accessories'
-        UNION ALL SELECT 10, 1010, 'Ski Helmet', 'Accessories'
-    )
-    SELECT
-        UUID_STRING() AS order_item_id,
-        eo.order_id,
-        pm.product_id,
-        pm.product_name,
-        pm.product_category,
-        UNIFORM(1, 5, RANDOM()) AS quantity,
-        ROUND(UNIFORM(10, 500, RANDOM()), 2) AS unit_price,
-        ROUND(UNIFORM(1, 5, RANDOM()) * UNIFORM(10, 500, RANDOM()), 2) AS line_total
-    FROM expanded_orders eo
-    CROSS JOIN product_mapping pm
-    WHERE pm.product_num = UNIFORM(1, 10, RANDOM());
-    
-    INSERT INTO product_reviews (product_id, customer_id, review_date, rating, review_title, review_text, verified_purchase)
-    SELECT
-        oi.product_id,
-        o.customer_id,
-        DATEADD(day, UNIFORM(1, 30, RANDOM()), o.order_date) AS review_date,
-        UNIFORM(3, 5, RANDOM()) AS rating,
-        CASE UNIFORM(1, 10, RANDOM())
-            WHEN 1 THEN 'Excellent quality and performance'
-            WHEN 2 THEN 'Highly recommend this product'
-            WHEN 3 THEN 'Great value for the price'
-            WHEN 4 THEN 'Perfect for my needs'
-            WHEN 5 THEN 'Outstanding product'
-            WHEN 6 THEN 'Very satisfied with purchase'
-            WHEN 7 THEN 'Good but has some limitations'
-            WHEN 8 THEN 'Solid performance overall'
-            WHEN 9 THEN 'Meets expectations'
-            ELSE 'Decent product with minor issues'
-        END AS review_title,
-        'I recently purchased this product and have been using it extensively over the past few weeks. Overall, I am quite satisfied with my purchase. The build quality is solid and the materials feel premium. Performance has been consistent across various conditions. The product arrived well packaged and exactly as described on the website. Setup was straightforward and I was able to start using it immediately without any complications. The attention to detail in the design is evident and shows that the manufacturer cares about creating a quality product. I particularly appreciate how well it performs in challenging conditions. The ergonomics are well thought out and it feels comfortable during extended use. After several weeks of regular use, I have noticed no significant wear or degradation in performance. The product maintains its original quality and continues to meet my expectations. Customer service was responsive when I had questions before purchasing. Shipping was prompt and the item arrived within the estimated delivery window. The price point is reasonable considering the quality and features offered. I have recommended this product to friends who were looking for similar equipment. While no product is perfect, this one comes close to meeting all my needs. There are minor areas where improvements could be made, but they do not significantly impact the overall experience. The functionality is solid and reliable. I feel confident that this product will continue to perform well over time. For anyone considering this purchase, I would say it is worth the investment if it matches your specific requirements and use case. Do your research and make sure it aligns with what you are looking for, but if it does, you will likely be pleased with the purchase.' AS review_text,
-        TRUE AS verified_purchase
-    FROM (
-        SELECT order_id, customer_id, order_date, order_status
-        FROM orders
-        ORDER BY order_date DESC
-        LIMIT :num_orders
-    ) o
-    INNER JOIN order_items oi ON o.order_id = oi.order_id
-    WHERE o.order_status = 'Completed'
-        AND UNIFORM(1, 10, RANDOM()) = 1;
-    
-    INSERT INTO support_tickets (customer_id, ticket_date, category, priority, subject, description, resolution, status)
-    SELECT
-        customer_id,
-        DATEADD(day, UNIFORM(1, 60, RANDOM()), order_date) AS ticket_date,
-        CASE UNIFORM(1, 5, RANDOM())
-            WHEN 1 THEN 'Product Issue'
-            WHEN 2 THEN 'Shipping'
-            WHEN 3 THEN 'Returns'
-            WHEN 4 THEN 'Product Question'
-            ELSE 'Technical Support'
-        END AS category,
-        CASE UNIFORM(1, 3, RANDOM())
-            WHEN 1 THEN 'High'
-            WHEN 2 THEN 'Medium'
-            ELSE 'Low'
-        END AS priority,
-        CASE UNIFORM(1, 10, RANDOM())
-            WHEN 1 THEN 'Question about product compatibility'
-            WHEN 2 THEN 'Order status inquiry'
-            WHEN 3 THEN 'Return or exchange request'
-            WHEN 4 THEN 'Product sizing question'
-            WHEN 5 THEN 'Warranty information needed'
-            WHEN 6 THEN 'Damaged item received'
-            WHEN 7 THEN 'Missing parts or accessories'
-            WHEN 8 THEN 'Installation instructions needed'
-            WHEN 9 THEN 'Performance issue with product'
-            ELSE 'General product question'
-        END AS subject,
-        'Hello, I am reaching out regarding my recent purchase and I hope you can help me with a question that has come up. I have been a customer for some time now and generally have positive experiences with your products and services. However, I have encountered a situation that requires some clarification or assistance. Let me provide some context and background information so you have a complete understanding of my inquiry. I placed my order several weeks ago and received it in good condition. The packaging was intact and everything appeared to be as expected based on the product description on your website. Initially, everything seemed fine and I was pleased with the purchase. However, after using the product for a period of time, I have noticed some things that I would like to discuss or get your expert opinion on. I want to make sure I am using the product correctly and getting the most out of my purchase. I have done some research online and read through the documentation that came with the product, but I still have some questions that I could not find clear answers to. I am hoping your customer support team can provide some guidance or recommendations based on your expertise and experience with this product line. I understand that every customer situation is unique and that you deal with a wide variety of questions and concerns. I appreciate your patience in working with me to resolve this matter. I value the quality of your products and would like to continue being a customer in the future. My hope is that we can work together to address this situation in a way that is satisfactory for everyone involved. Please let me know what additional information you might need from me to help address my concern. I am happy to provide photos, order numbers, or any other details that would be helpful. Thank you for taking the time to read this message and for your attention to customer satisfaction. I look forward to hearing back from you at your earliest convenience.' AS description,
-        CASE UNIFORM(1, 3, RANDOM())
-            WHEN 1 THEN 'Issue resolved with customer satisfaction'
-            WHEN 2 THEN 'Provided detailed guidance and instructions'
-            ELSE 'Offered replacement or refund as appropriate'
-        END AS resolution,
-        CASE UNIFORM(1, 3, RANDOM())
-            WHEN 1 THEN 'Closed'
-            WHEN 2 THEN 'Open'
-            ELSE 'Pending'
-        END AS status
-    FROM (
-        SELECT order_id, customer_id, order_date
-        FROM orders
-        ORDER BY order_date DESC
-        LIMIT :num_orders
-    )
-    WHERE UNIFORM(1, 20, RANDOM()) = 1;
-    
-    RETURN 'Successfully generated ' || :num_orders || ' orders with order items, reviews, and support tickets';
-END;
-$$;
-
 -- Verify procedures created
 SHOW PROCEDURES LIKE '%generate%';
 
@@ -504,7 +354,9 @@ BEGIN
             customer_id,
             order_date,
             order_status,
-            total_amount
+            total_amount,
+            discount_percent,
+            shipping_cost
         FROM (
             SELECT *,
                    ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY order_date DESC) as rn
@@ -517,12 +369,14 @@ BEGIN
         customer_id = src.customer_id,
         order_date = src.order_date,
         order_status = src.order_status,
-        total_amount = src.total_amount
+        total_amount = src.total_amount,
+        discount_percent = src.discount_percent,
+        shipping_cost = src.shipping_cost
     WHEN NOT MATCHED THEN INSERT (
-        order_id, customer_id, order_date, order_status, total_amount
+        order_id, customer_id, order_date, order_status, total_amount, discount_percent, shipping_cost
     ) VALUES (
         src.order_id, src.customer_id, src.order_date, src.order_status,
-        src.total_amount
+        src.total_amount, src.discount_percent, src.shipping_cost
     );
     
     orders_merged := SQLROWCOUNT;
@@ -1233,16 +1087,23 @@ FROM automated_intelligence.dynamic_tables.product_performance_metrics
 ORDER BY category, table_name;
 
 -- ============================================================================
--- Create Stage for Semantic Model Storage
+-- Create Stages
 -- ============================================================================
+
+-- Stage for Semantic Model Storage
 -- This stage stores semantic model YAML files used by Cortex Analyst
 -- for natural language to SQL translation.
-
 CREATE STAGE IF NOT EXISTS automated_intelligence.raw.semantic_models
     DIRECTORY = (ENABLE = TRUE)
     COMMENT = 'Stage for storing semantic model YAML files for Cortex Analyst';
 
-SHOW STAGES LIKE 'semantic_models' IN automated_intelligence.raw;
+-- Stage for Streamlit Dashboard
+-- This stage stores Streamlit application files for THE_DASHBOARD
+CREATE STAGE IF NOT EXISTS automated_intelligence.raw.the_dashboard_stage
+    DIRECTORY = (ENABLE = TRUE)
+    COMMENT = 'Stage for Streamlit dashboard application files';
+
+SHOW STAGES IN automated_intelligence.raw;
 
 -- ============================================================================
 -- Generate Initial Data
@@ -1266,14 +1127,7 @@ CALL automated_intelligence.raw.generate_customers($NUM_CUSTOMERS);
 --    Purpose: Set up Snowpipe Streaming for real-time data ingestion
 --    Use when: You need high-throughput streaming data ingestion
 --
--- 2. OPENFLOW KAFKA CONNECTOR (Alternative Ingestion)
---    - openflow-ingestion/setup_snowflake.sql
---    - openflow-ingestion/setup_openflow_user.sql
---    - openflow-ingestion/02_create_iceberg_tables.sql (requires ACCOUNTADMIN)
---    Purpose: Set up Openflow Kafka connector for external data sources
---    Use when: You need to ingest data from Kafka topics
---
--- 3. SECURITY & GOVERNANCE (Row-Level Security Demo)
+-- 2. SECURITY & GOVERNANCE (Row-Level Security Demo)
 --    - security-and-governance/setup_west_coast_manager.sql
 --    Purpose: Create demo role with row-level security policies
 --    Use when: You want to demonstrate region-based access control

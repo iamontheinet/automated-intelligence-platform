@@ -1,7 +1,7 @@
 -- Quick Refresh Script for Dynamic Tables
 -- Run this to manually trigger refreshes (instead of waiting 12 hours)
 
-USE ROLE SNOWFLAKE_INTELLIGENCE_ADMIN;
+USE ROLE AUTOMATED_INTELLIGENCE;
 USE WAREHOUSE automated_intelligence_wh;
 
 -- Refresh the chain of dynamic tables

@@ -1,17 +1,28 @@
 # Live Demo Script - Automated Intelligence Platform
 
 ## Overview
-This comprehensive demo showcases Snowflake's complete Automated Intelligence platform through four interconnected demos that demonstrate an end-to-end data pipeline:
+This comprehensive demo showcases Snowflake's complete Automated Intelligence platform through nine interconnected demos that demonstrate an end-to-end data pipeline:
 
 1. **Dynamic Tables Pipeline**: Zero-maintenance incremental transformations
 2. **Interactive Tables & Warehouses**: High-concurrency serving layer (<100ms queries)
 3. **Snowpipe Streaming**: Billion-scale real-time ingestion (Python + Java)
 4. **Security & Governance**: Row-based access control with AI agents
+5. **Cortex AI Integration**: Intelligent data processing with Analyst, Search, and Agent
+6. **ML Training with Ray**: Distributed customer churn prediction (4-node Ray cluster, XGBoost, ROC-AUC 0.90-0.96)
+7. **DBT Analytics**: Batch analytical models (4 staging views, 5 marts tables)
+8. **Streamlit Dashboards**: Interactive real-time monitoring and analytics
+9. **Gen2 Warehouses**: 10-40% faster MERGE/UPDATE operations for data pipeline efficiency
 
 ### Platform Flow
 ```
-Snowpipe Streaming → Dynamic Tables → Interactive Tables → Row Access Policies
-   (Ingestion)      (Transformation)     (Serving)         (Governance)
+Snowpipe Streaming → Dynamic Tables → Interactive Tables → Row Access Policies → Cortex AI
+   (Ingestion)      (Transformation)     (Serving)         (Governance)       (Intelligence)
+                                            ↓
+                                    DBT Analytics (Batch)
+                                            ↓
+                                       ML Training (Ray)
+                                            ↓
+                                   Streamlit Dashboards
 ```
 
 Each demo builds on shared infrastructure and can be run sequentially or independently after one-time setup.
@@ -24,16 +35,16 @@ Run these setup scripts **in order** to prepare all demo components:
 
 ```bash
 # 1. Base setup (database, tables, dynamic tables)
-snow sql -f setup.sql -c dash-builder-si
+snow sql -f setup.sql -c <your-connection-name>
 
 # 2. Interactive tables setup
-snow sql -f interactive/setup_interactive.sql -c dash-builder-si
+snow sql -f interactive/setup_interactive.sql -c <your-connection-name>
 
 # 3. Security setup (RBAC)
-snow sql -f security-and-governance/setup_west_coast_manager.sql -c dash-builder-si
+snow sql -f security-and-governance/setup_west_coast_manager.sql -c <your-connection-name>
 
 # 4. Snowpipe streaming setup
-snow sql -f snowpipe-streaming-java/setup_pipes.sql -c dash-builder-si
+snow sql -f snowpipe-streaming-java/setup_pipes.sql -c <your-connection-name>
 
 # 5. Python virtual environment for interactive demos
 cd interactive
@@ -42,7 +53,13 @@ source venv/bin/activate
 pip install snowflake-connector-python
 cd ..
 
-# 6. (Optional) DBT analytical layer
+# 6. ML Training setup (Ray on Snowflake)
+cd ml-training
+pip install -r requirements.txt
+# Follow ml-training/README.md for Ray cluster setup
+cd ..
+
+# 7. DBT analytical layer
 cd dbt-analytics
 pip install dbt-snowflake
 dbt deps && dbt build
@@ -64,7 +81,7 @@ If you need to start fresh with new ingestion data:
 
 ```bash
 # Truncate orders and downstream tables (keeps CUSTOMERS reference data)
-snow sql -f truncate_tables.sql -c dash-builder-si
+snow sql -f truncate_tables.sql -c <your-connection-name>
 ```
 
 This truncates:
@@ -84,7 +101,12 @@ Choose demos based on your audience:
 | **2. Interactive Tables** | 10-15 min | App Developers, Performance Engineers | Sub-100ms queries under high concurrency |
 | **3. Snowpipe Streaming** | 10-15 min | Real-time Engineers | Billion-scale ingestion (Python or Java) |
 | **4. Security & Governance** | 10-15 min | Security Teams, Compliance | Transparent row-level security with AI |
-| **Full Suite** | 45-60 min | Executive Demos, All-Hands | Complete platform capabilities end-to-end |
+| **5. Cortex AI** | 15-20 min | AI/ML Engineers, Data Scientists | Intelligent data processing with Analyst, Search, Agent |
+| **6. ML Training** | 15-20 min | ML Engineers, Data Scientists | Distributed training with Ray on Snowflake |
+| **7. DBT Analytics** | 10-15 min | Analytics Engineers | Batch analytical models with testing |
+| **8. Streamlit Dashboards** | 10-15 min | Business Analysts, App Developers | Real-time monitoring and analytics |
+| **9. Gen2 Warehouses** | 10-15 min | Performance Engineers | 10-40% faster MERGE/UPDATE operations |
+| **Full Suite** | 90-120 min | Executive Demos, All-Hands | Complete platform capabilities end-to-end |
 
 ---
 
@@ -672,7 +694,7 @@ Demonstrates row-based access control (RBAC) using Snowflake Intelligence with r
 
 | Role | States Visible | Revenue | Customers |
 |------|---------------|---------|-----------|
-| **SNOWFLAKE_INTELLIGENCE_ADMIN** | All 10 states | $733M | 20,200 |
+| **AUTOMATED_INTELLIGENCE** | All 10 states | $733M | 20,200 |
 | **WEST_COAST_MANAGER** | Only CA, OR, WA | $224M | 6,115 |
 
 ## Live Demo Script

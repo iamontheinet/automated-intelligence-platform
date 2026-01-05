@@ -32,6 +32,10 @@ This project implements real-time data ingestion using Snowflake's Snowpipe Stre
 - **Offset Token Tracking**: Ensures exactly-once delivery and resumability
 - **ID Management**: Maintains sequential IDs compatible with stored procedure
 - **Customer Partitioning**: Parallel instances work on separate customer ID ranges
+- **Segment-Based Order Generation**: Orders are generated with segment-specific amounts, discounts, and item counts
+  - Premium: $500-$3000 orders, 10% discount rate (5-10% off), 3-8 items/order
+  - Standard: $100-$800 orders, 40% discount rate (5-20% off), 2-5 items/order
+  - Basic: $20-$300 orders, 50% discount rate (10-30% off), 1-3 items/order
 
 ### Data Flow
 
@@ -91,8 +95,8 @@ Offset tokens enable:
 
 ### Snowflake Setup
 
-1. **Database and Tables**: Run `setup.sql` to create the base infrastructure
-2. **Initial Customers**: Run `CALL generate_customers(500000);` to create customer data
+1. **Database and Tables**: Run `setup.sql` to create the base infrastructure using role `AUTOMATED_INTELLIGENCE`
+2. **Initial Customers**: Run `CALL generate_customers(500000);` to create customer data with Premium, Standard, and Basic segments
 3. **PIPE Objects**: Run `setup_pipes.sql` to create streaming pipes (ORDERS_PIPE and ORDER_ITEMS_PIPE)
 
 ### Authentication Setup
@@ -139,7 +143,8 @@ Edit `profile.json`:
   "private_key": "-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----",
   "database": "AUTOMATED_INTELLIGENCE",
   "schema": "RAW",
-  "warehouse": "AUTOMATED_INTELLIGENCE_WH"
+  "warehouse": "AUTOMATED_INTELLIGENCE_WH",
+  "role": "AUTOMATED_INTELLIGENCE"
 }
 ```
 
@@ -316,12 +321,19 @@ ORDER BY LAST_COMMITTED_TIME DESC;
 
 ### Data Generation
 
-The application generates orders for existing customers:
+The application generates orders for existing customers with segment-based business logic:
 
 1. **Query Customers**: Fetches MAX(CUSTOMER_ID) from the customers table
 2. **Select Customer**: Randomly selects a customer ID from the existing range (1 to MAX_CUSTOMER_ID)
-3. **Generate Order**: Creates an order linked to the selected customer
-4. **Generate Order Items**: Creates 1-10 items per order with product details
+3. **Determine Segment**: Retrieves customer segment (Premium, Standard, Basic)
+4. **Generate Order**: Creates an order with segment-specific:
+   - **Premium**: $500-$3000 total, 10% chance of 5-10% discount
+   - **Standard**: $100-$800 total, 40% chance of 5-20% discount
+   - **Basic**: $20-$300 total, 50% chance of 10-30% discount
+5. **Generate Order Items**: Creates 1-10 items per order (count varies by segment):
+   - **Premium**: 3-8 items, $150-$500 unit prices
+   - **Standard**: 2-5 items, $50-$250 unit prices
+   - **Basic**: 1-3 items, $10-$100 unit prices
 
 ### Streaming Insertion
 

@@ -5,10 +5,11 @@ A Streamlit dashboard that monitors Snowpipe Streaming ingestion and Interactive
 ## Features
 
 ### 📊 Live Ingestion Monitoring
-- Real-time order volume tracking
+- Real-time order volume tracking with segment-based analytics
 - Ingestion rate (orders/hour)
 - 24-hour trend visualization
-- Recent orders sample view
+- Recent orders sample view with discount tracking
+- Order distribution by customer segment (Premium, Standard, Basic)
 
 ### ⚡ Query Performance Testing
 - Interactive Tables performance benchmarking
@@ -21,6 +22,12 @@ A Streamlit dashboard that monitors Snowpipe Streaming ingestion and Interactive
 - Interactive Tables health checks
 - Data freshness indicators
 - End-to-end pipeline visibility
+- Discount data availability tracking
+
+### 💰 Business Analytics
+- Revenue analysis with discount impact
+- Segment-based order patterns
+- Discount penetration metrics (now available after merge_staging_to_raw update)
 
 ## Quick Start
 
@@ -108,9 +115,10 @@ End-to-end health monitoring:
 - **Auto-refresh**: Enabled for local development
 
 ### Connection
-The app uses standard Snowpark connection pattern:
+The app uses standard Snowpark connection pattern with the `AUTOMATED_INTELLIGENCE` role:
 - **Snowflake deployment**: `get_active_session()` (automatic)
 - **Local development**: `Session.builder.config('connection_name', 'default')`
+- **Role**: Uses `AUTOMATED_INTELLIGENCE` role for all queries
 
 ## Use Cases
 
@@ -123,6 +131,9 @@ The app uses standard Snowpark connection pattern:
    ```
 3. Watch live metrics update in dashboard
 4. Show 24-hour trend chart filling in real-time
+5. Observe segment-based order distribution (Premium, Standard, Basic)
+6. Use "MERGE and UPDATE" button to move staging data to production
+7. Check discount impact analysis after merge completes
 
 ### During Interactive Tables Demo
 1. Open dashboard to show current data volume
