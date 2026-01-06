@@ -107,9 +107,9 @@ public class ParallelStreamingOrchestrator {
                     reconciliationStats.get("duplicateOrdersFound") > 0) {
                     logger.warn(
                         "⚠️  Data inconsistencies detected and cleaned: {} orphaned orders, {} orphaned order_items, {} duplicate orders",
-                        String.format("%,d", reconciliationStats.get("orphanedOrdersDeleted")),
-                        String.format("%,d", reconciliationStats.get("orphanedItemsDeleted")),
-                        String.format("%,d", reconciliationStats.get("duplicateOrdersDeleted"))
+                        "%,d".formatted(reconciliationStats.get("orphanedOrdersDeleted")),
+                        "%,d".formatted(reconciliationStats.get("orphanedItemsDeleted")),
+                        "%,d".formatted(reconciliationStats.get("duplicateOrdersDeleted"))
                     );
                 } else {
                     logger.info("✅ No data inconsistencies found - ingestion was atomic");

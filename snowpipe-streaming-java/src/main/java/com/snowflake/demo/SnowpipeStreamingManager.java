@@ -4,7 +4,6 @@ import com.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import com.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import com.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
 import com.snowflake.ingest.streaming.OpenChannelResult;
-import com.snowflake.ingest.utils.SFException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -178,8 +177,8 @@ public class SnowpipeStreamingManager {
             return;
         }
         
-        String startOffset = "order_" + orders.get(0).getOrderId();
-        String endOffset = "order_" + orders.get(orders.size() - 1).getOrderId();
+        String startOffset = "order_" + orders.getFirst().getOrderId();
+        String endOffset = "order_" + orders.getLast().getOrderId();
         
         List<Map<String, Object>> rows = orders.stream()
                 .map(Order::toMap)
@@ -195,8 +194,8 @@ public class SnowpipeStreamingManager {
             return;
         }
         
-        String startOffset = "item_" + items.get(0).getOrderItemId();
-        String endOffset = "item_" + items.get(items.size() - 1).getOrderItemId();
+        String startOffset = "item_" + items.getFirst().getOrderItemId();
+        String endOffset = "item_" + items.getLast().getOrderItemId();
         
         List<Map<String, Object>> rows = items.stream()
                 .map(OrderItem::toMap)
@@ -237,7 +236,7 @@ public class SnowpipeStreamingManager {
                 }
                 return;
                 
-            } catch (SFException e) {
+            } catch (Exception e) {
                 String errorMsg = e.getMessage();
                 
                 // Check for ReceiverSaturated (HTTP 429) backpressure errors
@@ -260,9 +259,6 @@ public class SnowpipeStreamingManager {
                     logger.error("Unexpected error inserting {}: {}", dataType, errorMsg);
                     throw e;
                 }
-            } catch (Exception e) {
-                logger.error("Unexpected error type inserting {}: {}", dataType, e.getMessage());
-                throw e;
             }
         }
     }

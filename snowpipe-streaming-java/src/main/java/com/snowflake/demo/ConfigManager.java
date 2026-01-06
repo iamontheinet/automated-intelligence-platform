@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.util.Properties;
 
 public class ConfigManager {
@@ -31,7 +31,7 @@ public class ConfigManager {
 
     private JsonNode loadProfile(String path) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        String content = new String(Files.readAllBytes(Paths.get(path)));
+        String content = new String(Files.readAllBytes(Path.of(path)));
         logger.info("Loaded Snowflake profile from: {}", path);
         return mapper.readTree(content);
     }

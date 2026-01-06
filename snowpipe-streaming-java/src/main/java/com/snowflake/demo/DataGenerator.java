@@ -77,11 +77,11 @@ public class DataGenerator {
         String firstName = randomElement(FIRST_NAMES);
         String lastName = randomElement(LAST_NAMES);
         String email = "customer" + customerId + "@email.com";
-        String phone = String.format("555-%03d-%04d", random.nextInt(900) + 100, random.nextInt(9000) + 1000);
+        String phone = "555-%03d-%04d".formatted(random.nextInt(900) + 100, random.nextInt(9000) + 1000);
         String address = (random.nextInt(9900) + 100) + " " + randomElement(STREETS);
         String city = randomElement(CITIES);
         String state = randomElement(STATES);
-        String zipCode = String.format("%05d", random.nextInt(90000) + 10000);
+        String zipCode = "%05d".formatted(random.nextInt(90000) + 10000);
         LocalDate regDate = LocalDate.now().minusDays(random.nextInt(1825) + 1);
         String customerSegment = randomElement(SEGMENTS);
 

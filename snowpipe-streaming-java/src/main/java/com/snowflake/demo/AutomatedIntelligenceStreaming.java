@@ -106,7 +106,6 @@ public class AutomatedIntelligenceStreaming {
                 logger.info("Progress: {}/{} orders streamed ({} order items)", 
                            processedOrders, numOrders, allOrderItems.size());
             }
-            }
         }
 
         logger.info("Successfully streamed {} orders", numOrders);
@@ -156,8 +155,8 @@ public class AutomatedIntelligenceStreaming {
                     reconciliationStats.get("orphanedItemsFound") > 0) {
                     logger.warn(
                         "⚠️  Data inconsistencies detected and cleaned: {} orphaned orders, {} orphaned order_items",
-                        String.format("%,d", reconciliationStats.get("orphanedOrdersDeleted")),
-                        String.format("%,d", reconciliationStats.get("orphanedItemsDeleted"))
+                        "%,d".formatted(reconciliationStats.get("orphanedOrdersDeleted")),
+                        "%,d".formatted(reconciliationStats.get("orphanedItemsDeleted"))
                     );
                 } else {
                     logger.info("✅ No data inconsistencies found - ingestion was atomic");
