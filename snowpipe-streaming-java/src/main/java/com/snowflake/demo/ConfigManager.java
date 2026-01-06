@@ -76,4 +76,9 @@ public class ConfigManager {
     public String getWarehouse() {
         return profileConfig.get("warehouse").asText();
     }
+
+    public String getRole() {
+        JsonNode roleNode = profileConfig.get("role");
+        return roleNode != null ? roleNode.asText() : "AUTOMATED_INTELLIGENCE";
+    }
 }

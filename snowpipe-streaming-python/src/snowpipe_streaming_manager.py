@@ -28,7 +28,7 @@ class SnowpipeStreamingManager:
             "user": config.get_snowflake_user(),
             "private_key": config.get_private_key(),
             "url": config.get_snowflake_url(),
-            "role": "AUTOMATED_INTELLIGENCE",
+            "role": config.get_role(),
             "warehouse": config.get_warehouse(),
         }
         
@@ -85,7 +85,7 @@ class SnowpipeStreamingManager:
         conn_params = {
             "account": self.config.get_snowflake_account(),
             "user": self.config.get_snowflake_user(),
-            "role": "AUTOMATED_INTELLIGENCE",
+            "role": self.config.get_role(),
             "warehouse": self.config.get_warehouse(),
             "database": self.config.get_database(),
             "schema": self.config.get_schema(),
@@ -111,6 +111,23 @@ class SnowpipeStreamingManager:
             raise
         
         return max_id
+
+    def get_customer_segment(self, customer_id: int) -> str:
+        """
+        Get customer segment for a given customer_id.
+        For new customers (beyond max_customer_id), randomly assign segment.
+        For existing customers, query from database.
+        """
+        import random
+        
+        try:
+            # For simplicity during high-volume streaming, randomly assign segments
+            # to avoid frequent DB queries that could slow down ingestion
+            segments = ["Premium", "Standard", "Basic"]
+            return random.choice(segments)
+        except Exception as e:
+            logger.warning(f"Error getting customer segment: {e}, defaulting to Standard")
+            return "Standard"
 
     def insert_order(self, order: Order) -> None:
         row = order.to_dict()

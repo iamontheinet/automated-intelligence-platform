@@ -56,7 +56,7 @@ public class ReconciliationManager {
         // Set connection properties
         Properties props = new Properties();
         props.put("user", config.getSnowflakeUser());
-        props.put("role", "AUTOMATED_INTELLIGENCE");
+        props.put("role", config.getRole());
         props.put("warehouse", config.getWarehouse());
         props.put("db", config.getDatabase());
         props.put("schema", config.getSchema());

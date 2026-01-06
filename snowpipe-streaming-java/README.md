@@ -88,10 +88,14 @@ Offset tokens enable:
 
 ### System Requirements
 
-- Java 11 or later
+- Java 21 or later (required for current implementation)
 - Maven 3.6+
-- Network access to Snowflake and AWS S3
+- Network access to Snowflake
 - Snowflake account with ACCOUNTADMIN or sufficient privileges
+
+**IMPORTANT: Use Snowpipe Streaming SDK v1.0.2**
+
+SDK v1.1.0 has a known JWT authentication bug (error code 390144). The `pom.xml` is configured to use v1.0.2.
 
 ### Snowflake Setup
 
@@ -147,6 +151,12 @@ Edit `profile.json`:
   "role": "AUTOMATED_INTELLIGENCE"
 }
 ```
+
+**Important Configuration Notes:**
+- **account**: Use hyphens, not underscores (e.g., `sfsenorthamerica-gen-ai-hol`, NOT `sfsenorthamerica-gen_ai_hol`)
+- **role**: Must specify a valid role (SDK does not default to user's default role)
+- **private_key**: Use `\\n` for newlines in JSON format
+- **schema**: Use `RAW` for production, `STAGING` for staging environment
 
 ### 2. Configure `config.properties`
 
@@ -218,17 +228,20 @@ mvn clean package -DskipTests
 
 # Generate 10,000 orders (single batch, ~5 seconds)
 java --add-opens=java.base/java.nio=ALL-UNNAMED \
-  -jar target/automated-intelligence-streaming-1.0.0.jar 10000
+  -jar target/automated-intelligence-streaming-1.0.0.jar 10000 config.properties profile.json
 
 # Generate 100,000 orders (10 batches, ~1 minute)
 java --add-opens=java.base/java.nio=ALL-UNNAMED \
-  -jar target/automated-intelligence-streaming-1.0.0.jar 100000
+  -jar target/automated-intelligence-streaming-1.0.0.jar 100000 config.properties profile.json
 
-# Or use test script
-./test-bulk-generation.sh
+# Use staging configuration
+java --add-opens=java.base/java.nio=ALL-UNNAMED \
+  -jar target/automated-intelligence-streaming-1.0.0.jar 100000 config_staging.properties profile_staging.json
 ```
 
-**Note**: The `--add-opens` JVM option is required for Java 11+ Arrow compatibility with JDBC.
+**Note**: 
+- The `--add-opens` JVM option is required for Java 11+ Arrow compatibility with JDBC.
+- Now supports command-line arguments for config and profile files (defaults: `config.properties`, `profile.json`)
 
 ### Horizontal Scaling: Parallel Instances (Recommended for Scale)
 
@@ -565,6 +578,42 @@ Test: 50,000 orders with 5 parallel instances
 - Throughput: ~5,000 orders/second
 - Channel conflicts: 0 (unique naming working)
 ```
+
+## Troubleshooting
+
+### JWT Authentication Error (Error 390144)
+```
+Error: HTTP 401, error_code=390144, message=JWT token is invalid
+```
+**Solution**: This is a known bug in Snowpipe Streaming SDK v1.1.0. The `pom.xml` is configured to use v1.0.2. If you see this error:
+```bash
+mvn clean install  # Reinstall dependencies
+```
+
+### JVM Arrow Memory Error
+```
+Error: Failed to initialize MemoryUtil. You must start Java with --add-opens
+```
+**Solution**: Always include the JVM argument:
+```bash
+java --add-opens=java.base/java.nio=ALL-UNNAMED -jar target/automated-intelligence-streaming-1.0.0.jar
+```
+
+### Authentication Errors
+- Verify private key format includes headers and uses `\\n` for newlines in JSON
+- Ensure public key is assigned to user in Snowflake
+- Check user has necessary permissions
+- **Verify account identifier uses hyphens** (e.g., `gen-ai-hol`, NOT `gen_ai_hol`)
+- **Ensure role field is present** in profile.json
+
+### No Data Appearing
+- Wait for max_client_lag duration (default 60 seconds)
+- Check PIPE objects exist: `SHOW PIPES IN SCHEMA AUTOMATED_INTELLIGENCE.RAW;`
+- Verify schema setting in profile.json matches your target tables
+- Check warehouse is running
+
+### Orphaned Records
+If streaming fails mid-batch, you may have orphaned orders (orders without order_items). See ReconciliationManager class for cleanup utilities.
 
 ## References
 

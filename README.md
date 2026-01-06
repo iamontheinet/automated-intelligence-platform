@@ -855,6 +855,16 @@ Solution: Ensure you're using the updated setup.sql
 
 ### Snowpipe Streaming Issues
 
+**Issue: JWT token authentication failures (Error 390144)**
+```
+Solution: Use Snowpipe Streaming SDK v1.0.2 (not v1.1.0)
+- SDK v1.1.0 has a known JWT authentication bug
+- Both Python and Java implementations require v1.0.2
+- Python: pip install snowpipe-streaming==1.0.2
+- Java: Update pom.xml to <snowpipe.streaming.version>1.0.2</snowpipe.streaming.version>
+- See snowpipe-streaming-python/README.md or snowpipe-streaming-java/README.md for details
+```
+
 **Issue: RSA key authentication failures**
 ```
 Solution: Verify RSA key pair setup
@@ -863,7 +873,9 @@ Solution: Verify RSA key pair setup
    DESC USER <username>;
    -- Check RSA_PUBLIC_KEY_FP field
 3. Ensure private key path in config is correct
-4. See snowpipe-streaming-python/README.md for detailed setup
+4. Verify account identifier uses hyphens not underscores (e.g., gen-ai-hol, not gen_ai_hol)
+5. Add role field to profile.json with appropriate role
+6. See snowpipe-streaming-python/README.md for detailed setup
 ```
 
 **Issue: "Channel not found" or connection errors**

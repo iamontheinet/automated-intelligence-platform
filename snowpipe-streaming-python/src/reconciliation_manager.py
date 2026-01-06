@@ -30,7 +30,7 @@ class ReconciliationManager:
         conn_params = {
             "account": self.config.get_snowflake_account(),
             "user": self.config.get_snowflake_user(),
-            "role": "AUTOMATED_INTELLIGENCE",
+            "role": self.config.get_role(),
             "warehouse": self.config.get_warehouse(),
             "database": self.config.get_database(),
             "schema": self.config.get_schema(),

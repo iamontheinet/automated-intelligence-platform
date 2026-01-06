@@ -47,7 +47,13 @@ This application streams synthetic e-commerce data (customers, orders, and order
 
 ### 1. Install Dependencies
 
+**IMPORTANT: Use Snowpipe Streaming SDK v1.0.2**
+
+SDK v1.1.0 has a known JWT authentication bug (error code 390144). Use v1.0.2:
+
 ```bash
+pip install snowpipe-streaming==1.0.2
+# Or from requirements.txt
 pip install -r requirements.txt
 ```
 
@@ -104,7 +110,11 @@ Edit `profile.json`:
 }
 ```
 
-**Note**: Paste the **entire private key** from `rsa_key.p8` including headers.
+**Important Configuration Notes:**
+- **account**: Use hyphens, not underscores (e.g., `sfsenorthamerica-gen-ai-hol`, NOT `sfsenorthamerica-gen_ai_hol`)
+- **role**: Must specify a valid role (SDK does not default to user's default role)
+- **private_key**: Paste the **entire private key** from `rsa_key.p8` including headers
+- **schema**: Use `RAW` for production, `STAGING` for staging environment
 
 ## Usage
 
@@ -263,20 +273,47 @@ SELECT COUNT(*) FROM AUTOMATED_INTELLIGENCE.RAW.ORDER_ITEMS;
 
 ## Troubleshooting
 
+### JWT Authentication Error (Error 390144)
+```
+Error: HTTP 401, error_code=390144, message=JWT token is invalid
+```
+**Solution**: This is a known bug in Snowpipe Streaming SDK v1.1.0. Downgrade to v1.0.2:
+```bash
+pip install snowpipe-streaming==1.0.2
+```
+
 ### Authentication Errors
 - Verify private key format includes headers: `-----BEGIN PRIVATE KEY-----`
 - Ensure public key is assigned to user in Snowflake
 - Check user has necessary permissions
+- **Verify account identifier uses hyphens** (e.g., `gen-ai-hol`, NOT `gen_ai_hol`)
+- **Ensure role field is present** in profile.json
 
 ### No Data Appearing
 - Verify PIPE objects exist: `SHOW PIPES IN SCHEMA AUTOMATED_INTELLIGENCE.RAW;`
 - Check for errors: `SELECT * FROM TABLE(VALIDATE_PIPE_LOAD('ORDERS_PIPE', ...));`
 - Wait briefly for data to be visible (ingestion latency varies)
+- Check schema setting in profile.json matches your target tables
 
 ### Performance Issues
 - Increase `orders.batch.size` in config.properties
 - Use parallel streaming for large volumes
 - Monitor warehouse size and scaling
+
+### Orphaned Records
+If streaming fails mid-batch, you may have orphaned orders (orders without order_items):
+```bash
+# Run reconciliation to clean up
+cd src
+python -c "
+import sys
+sys.path.insert(0, '.')
+from config_manager import ConfigManager
+from reconciliation_manager import ReconciliationManager
+config = ConfigManager('config.properties', 'profile.json')
+ReconciliationManager(config).reconcile_and_cleanup()
+"
+```
 
 ## License
 

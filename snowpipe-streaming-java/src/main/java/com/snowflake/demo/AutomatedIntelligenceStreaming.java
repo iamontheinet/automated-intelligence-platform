@@ -19,17 +19,18 @@ public class AutomatedIntelligenceStreaming {
     }
 
     public void generateAndStreamOrders(int numOrders) throws Exception {
-        logger.info("Starting to generate and stream {} orders", numOrders);
+        long startTime = System.currentTimeMillis();
+        logger.info("Starting to generate and stream {} orders", "%,d".formatted(numOrders));
 
         int maxCustomerId = streamingManager.getMaxCustomerId();
         if (maxCustomerId == 0) {
             logger.error("No customers found in database. Please run generate_customers() stored procedure first to create customers.");
             throw new IllegalStateException("No customers available for order generation");
         }
-        logger.info("Will generate orders for customer IDs in range 1-{}", maxCustomerId);
+        logger.info("Will generate orders for customer IDs in range 1-{}", "%,d".formatted(maxCustomerId));
 
         int batchSize = config.getIntProperty("orders.batch.size", 10000);
-        logger.info("Using batch size: {} orders per insertRows call", batchSize);
+        logger.info("Using batch size: {} orders per insertRows call", "%,d".formatted(batchSize));
         
         int processedOrders = 0;
         int maxRetries = 3;
@@ -104,11 +105,12 @@ public class AutomatedIntelligenceStreaming {
             if (ordersInserted && itemsInserted) {
                 processedOrders += currentBatchSize;
                 logger.info("Progress: {}/{} orders streamed ({} order items)", 
-                           processedOrders, numOrders, allOrderItems.size());
+                           "%,d".formatted(processedOrders), "%,d".formatted(numOrders), "%,d".formatted(allOrderItems.size()));
             }
         }
 
-        logger.info("Successfully streamed {} orders", numOrders);
+        long elapsedMs = System.currentTimeMillis() - startTime;
+        logger.info("Successfully streamed {} orders in {} ms", "%,d".formatted(numOrders), "%,d".formatted(elapsedMs));
         printOffsetStatus();
     }
 
@@ -125,7 +127,10 @@ public class AutomatedIntelligenceStreaming {
         SnowpipeStreamingManager streamingManager = null;
 
         try {
-            config = new ConfigManager("config.properties", "profile.json");
+            String configFile = args.length > 1 ? args[1] : "config.properties";
+            String profileFile = args.length > 2 ? args[2] : "profile.json";
+            
+            config = new ConfigManager(configFile, profileFile);
             streamingManager = new SnowpipeStreamingManager(config);
 
             AutomatedIntelligenceStreaming app = new AutomatedIntelligenceStreaming(config, streamingManager);
@@ -152,11 +157,13 @@ public class AutomatedIntelligenceStreaming {
                 
                 // Report if any inconsistencies were found
                 if (reconciliationStats.get("orphanedOrdersFound") > 0 || 
-                    reconciliationStats.get("orphanedItemsFound") > 0) {
+                    reconciliationStats.get("orphanedItemsFound") > 0 ||
+                    reconciliationStats.get("duplicateOrdersFound") > 0) {
                     logger.warn(
-                        "⚠️  Data inconsistencies detected and cleaned: {} orphaned orders, {} orphaned order_items",
+                        "⚠️  Data inconsistencies detected and cleaned: {} orphaned orders, {} orphaned order_items, {} duplicate orders",
                         "%,d".formatted(reconciliationStats.get("orphanedOrdersDeleted")),
-                        "%,d".formatted(reconciliationStats.get("orphanedItemsDeleted"))
+                        "%,d".formatted(reconciliationStats.get("orphanedItemsDeleted")),
+                        "%,d".formatted(reconciliationStats.get("duplicateOrdersDeleted"))
                     );
                 } else {
                     logger.info("✅ No data inconsistencies found - ingestion was atomic");
