@@ -134,6 +134,11 @@ python automated_intelligence_streaming.py
 
 # Stream 10,000 orders
 python automated_intelligence_streaming.py 10000
+
+# Use custom config and profile files
+python automated_intelligence_streaming.py 1000 config_staging.properties profile_staging.json
+
+# Defaults: config_default.properties and profile.json
 ```
 
 ### Parallel Streaming (High Throughput)
@@ -162,7 +167,7 @@ python parallel_streaming_orchestrator.py 10000000 10
 
 ## Configuration
 
-Edit `config.properties` to tune performance:
+Edit `config_default.properties` to tune performance:
 
 ```properties
 # Batch size: Orders per append_rows() call
@@ -216,7 +221,8 @@ snowpipe-streaming-python/
 │   ├── snowpipe_streaming_manager.py          # Snowpipe SDK wrapper
 │   ├── automated_intelligence_streaming.py    # Single-instance application
 │   └── parallel_streaming_orchestrator.py     # Multi-instance orchestrator
-├── config.properties                          # Application configuration
+├── config_default.properties                  # Default configuration (RAW schema)
+├── config_staging.properties                  # Staging environment configuration
 ├── profile.json.template                      # Snowflake credentials template
 ├── requirements.txt                           # Python dependencies
 └── README.md                                  # This file

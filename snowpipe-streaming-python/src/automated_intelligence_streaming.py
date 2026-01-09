@@ -137,15 +137,24 @@ def main():
     streaming_manager = None
     
     try:
-        config = ConfigManager("config.properties", "profile.json")
+        config_file = "config_default.properties"
+        profile_file = "profile.json"
+        num_orders = None
+        
+        if len(sys.argv) > 1:
+            num_orders = int(sys.argv[1])
+        if len(sys.argv) > 2:
+            config_file = sys.argv[2]
+        if len(sys.argv) > 3:
+            profile_file = sys.argv[3]
+        
+        config = ConfigManager(config_file, profile_file)
         streaming_manager = SnowpipeStreamingManager(config)
         
         app = AutomatedIntelligenceStreaming(config, streaming_manager)
         
-        num_orders = config.get_int_property("num.orders.per.batch", 100)
-        
-        if len(sys.argv) > 1:
-            num_orders = int(sys.argv[1])
+        if num_orders is None:
+            num_orders = config.get_int_property("num.orders.per.batch", 100)
         
         app.generate_and_stream_orders(num_orders)
         

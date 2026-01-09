@@ -158,7 +158,7 @@ Edit `profile.json`:
 - **private_key**: Use `\\n` for newlines in JSON format
 - **schema**: Use `RAW` for production, `STAGING` for staging environment
 
-### 2. Configure `config.properties`
+### 2. Configure `config_default.properties`
 
 Adjust settings for optimal throughput:
 
@@ -226,13 +226,17 @@ The application now supports **bulk batch generation** for high-throughput inges
 # Build the application
 mvn clean package -DskipTests
 
-# Generate 10,000 orders (single batch, ~5 seconds)
+# Generate 10,000 orders (single batch, ~5 seconds) - uses defaults
 java --add-opens=java.base/java.nio=ALL-UNNAMED \
-  -jar target/automated-intelligence-streaming-1.0.0.jar 10000 config.properties profile.json
+  -jar target/automated-intelligence-streaming-1.0.0.jar 10000
+
+# Explicitly specify config files
+java --add-opens=java.base/java.nio=ALL-UNNAMED \
+  -jar target/automated-intelligence-streaming-1.0.0.jar 10000 config_default.properties profile.json
 
 # Generate 100,000 orders (10 batches, ~1 minute)
 java --add-opens=java.base/java.nio=ALL-UNNAMED \
-  -jar target/automated-intelligence-streaming-1.0.0.jar 100000 config.properties profile.json
+  -jar target/automated-intelligence-streaming-1.0.0.jar 100000
 
 # Use staging configuration
 java --add-opens=java.base/java.nio=ALL-UNNAMED \
@@ -241,7 +245,8 @@ java --add-opens=java.base/java.nio=ALL-UNNAMED \
 
 **Note**: 
 - The `--add-opens` JVM option is required for Java 11+ Arrow compatibility with JDBC.
-- Now supports command-line arguments for config and profile files (defaults: `config.properties`, `profile.json`)
+- Supports command-line arguments: `<num_orders> [config_file] [profile_file]`
+- Defaults: `config_default.properties` and `profile.json`
 
 ### Horizontal Scaling: Parallel Instances (Recommended for Scale)
 
@@ -496,7 +501,8 @@ This implementation uses **High-Performance Architecture**:
 ```
 snowpipe-streaming/
 ├── pom.xml                                  # Maven build configuration
-├── config.properties                        # Application configuration (optimized settings)
+├── config_default.properties                # Default configuration (RAW schema)
+├── config_staging.properties                # Staging environment configuration
 ├── profile.json.template                    # Snowflake connection template
 ├── profile.json                             # Your connection (git-ignored)
 ├── setup_pipes.sql                          # SQL to create PIPE objects

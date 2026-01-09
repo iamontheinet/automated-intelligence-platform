@@ -1236,6 +1236,7 @@ automated-intelligence/
 │   │   ├── parallel_streaming_orchestrator.py
 │   │   ├── models.py
 │   │   └── data_generator.py
+│   ├── config_default.properties     # Default config (RAW schema)
 │   ├── config_staging.properties      # Staging target config
 │   ├── profile_staging.json.template  # Staging credentials template
 │   ├── requirements.txt
@@ -1243,6 +1244,8 @@ automated-intelligence/
 │
 ├── snowpipe-streaming-java/    # Demo 4: Java implementation (component-specific setup)
 │   ├── src/
+│   ├── config_default.properties     # Default config (RAW schema)
+│   ├── config_staging.properties      # Staging target config
 │   ├── pom.xml
 │   └── README.md               # SDK setup and configuration instructions
 │

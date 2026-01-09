@@ -127,7 +127,7 @@ public class AutomatedIntelligenceStreaming {
         SnowpipeStreamingManager streamingManager = null;
 
         try {
-            String configFile = args.length > 1 ? args[1] : "config.properties";
+            String configFile = args.length > 1 ? args[1] : "config_default.properties";
             String profileFile = args.length > 2 ? args[2] : "profile.json";
             
             config = new ConfigManager(configFile, profileFile);
