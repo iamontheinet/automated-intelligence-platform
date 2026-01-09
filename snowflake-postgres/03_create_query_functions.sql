@@ -123,7 +123,42 @@ class PgQuery:
 $$;
 
 -- ============================================================================
+-- Stored Procedure: PG_EXEC
+-- Executes DDL/DML statements (no result set returned)
+-- ============================================================================
+CREATE OR REPLACE PROCEDURE pg_exec(sql_stmt STRING)
+RETURNS STRING
+LANGUAGE PYTHON
+RUNTIME_VERSION = '3.11'
+PACKAGES = ('snowflake-snowpark-python', 'psycopg2')
+HANDLER = 'run_exec'
+EXTERNAL_ACCESS_INTEGRATIONS = (postgres_external_access)
+SECRETS = ('cred' = postgres_secret)
+AS
+$$
+import _snowflake
+import psycopg2
+
+def run_exec(session, sql_stmt):
+    cred = _snowflake.get_username_password('cred')
+    conn = psycopg2.connect(
+        host='o6gnp7eqn5awvivkqhk22xpoym.sfsenorthamerica-gen-ai-hol.us-west-2.aws.postgres.snowflake.app',
+        port=5432,
+        database='postgres',
+        user=cred.username,
+        password=cred.password,
+        sslmode='require'
+    )
+    cur = conn.cursor()
+    cur.execute(sql_stmt)
+    conn.commit()
+    conn.close()
+    return 'OK'
+$$;
+
+-- ============================================================================
 -- Verify functions created
 -- ============================================================================
 SHOW PROCEDURES LIKE 'query_postgres';
+SHOW PROCEDURES LIKE 'pg_exec';
 SHOW USER FUNCTIONS LIKE 'pg_query';

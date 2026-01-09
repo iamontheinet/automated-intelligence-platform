@@ -17,98 +17,97 @@ USE SCHEMA POSTGRES;
 -- ============================================================================
 
 -- Get row counts
-CALL query_postgres('SELECT COUNT(*) as cnt FROM customers');
-CALL query_postgres('SELECT COUNT(*) as cnt FROM orders');
-CALL query_postgres('SELECT COUNT(*) as cnt FROM order_items');
+CALL query_postgres('SELECT COUNT(*) as cnt FROM product_reviews');
+CALL query_postgres('SELECT COUNT(*) as cnt FROM support_tickets');
 
 -- Get table summary
 CALL query_postgres('
     SELECT 
-        ''customers'' as table_name, COUNT(*) as row_count FROM customers
+        ''product_reviews'' as table_name, COUNT(*) as row_count FROM product_reviews
     UNION ALL
-    SELECT ''orders'', COUNT(*) FROM orders
-    UNION ALL
-    SELECT ''order_items'', COUNT(*) FROM order_items
-    UNION ALL
-    SELECT ''product_catalog'', COUNT(*) FROM product_catalog
+    SELECT ''support_tickets'', COUNT(*) FROM support_tickets
 ');
 
 -- ============================================================================
 -- Method 2: Using TABLE(pg_query()) - Returns Table
 -- ============================================================================
 
--- Query customers as a table
-SELECT result FROM TABLE(pg_query('SELECT * FROM customers LIMIT 10'));
+-- Query product reviews as a table
+SELECT result FROM TABLE(pg_query('SELECT * FROM product_reviews LIMIT 10'));
 
--- Extract specific fields from results
+-- Extract specific fields from reviews
 SELECT 
-    result:customer_id::INT as customer_id,
-    result:first_name::STRING as first_name,
-    result:last_name::STRING as last_name,
-    result:email::STRING as email,
-    result:customer_segment::STRING as segment
-FROM TABLE(pg_query('SELECT * FROM customers LIMIT 10'));
-
--- Query orders with formatting
-SELECT 
-    result:order_id::STRING as order_id,
-    result:customer_id::INT as customer_id,
-    result:order_date::TIMESTAMP as order_date,
-    result:order_status::STRING as status,
-    result:total_amount::FLOAT as total_amount
-FROM TABLE(pg_query('SELECT * FROM orders ORDER BY order_date DESC LIMIT 10'));
-
--- Query products
-SELECT 
+    result:review_id::INT as review_id,
     result:product_id::INT as product_id,
-    result:product_name::STRING as product_name,
-    result:product_category::STRING as category,
-    result:price::FLOAT as price
-FROM TABLE(pg_query('SELECT * FROM product_catalog'));
+    result:rating::INT as rating,
+    result:review_title::STRING as title,
+    result:verified_purchase::BOOLEAN as verified
+FROM TABLE(pg_query('SELECT * FROM product_reviews ORDER BY review_date DESC LIMIT 10'));
+
+-- Query support tickets with formatting
+SELECT 
+    result:ticket_id::INT as ticket_id,
+    result:customer_id::INT as customer_id,
+    result:ticket_date::TIMESTAMP as ticket_date,
+    result:category::STRING as category,
+    result:priority::STRING as priority,
+    result:status::STRING as status
+FROM TABLE(pg_query('SELECT * FROM support_tickets ORDER BY ticket_date DESC LIMIT 10'));
 
 -- ============================================================================
--- Method 3: Complex Queries with Joins (run in Postgres)
+-- Method 3: Analytics Queries (run in Postgres)
 -- ============================================================================
 
--- Top customers by order count
+-- Rating distribution
 SELECT result FROM TABLE(pg_query('
     SELECT 
-        c.customer_id,
-        c.first_name || '' '' || c.last_name as customer_name,
-        c.customer_segment,
-        COUNT(o.order_id) as order_count,
-        SUM(o.total_amount) as total_spent
-    FROM customers c
-    LEFT JOIN orders o ON c.customer_id = o.customer_id
-    GROUP BY c.customer_id, c.first_name, c.last_name, c.customer_segment
-    ORDER BY total_spent DESC NULLS LAST
-    LIMIT 10
+        rating,
+        COUNT(*) as count,
+        ROUND(AVG(CASE WHEN verified_purchase THEN 1 ELSE 0 END) * 100, 1) as verified_pct
+    FROM product_reviews
+    GROUP BY rating
+    ORDER BY rating DESC
 '));
 
--- Orders with items summary
+-- Ticket status summary
 SELECT result FROM TABLE(pg_query('
     SELECT 
-        o.order_id,
-        o.order_date,
-        o.order_status,
-        COUNT(oi.order_item_id) as item_count,
-        SUM(oi.line_total) as items_total,
-        o.total_amount as order_total
-    FROM orders o
-    LEFT JOIN order_items oi ON o.order_id = oi.order_id
-    GROUP BY o.order_id, o.order_date, o.order_status, o.total_amount
-    ORDER BY o.order_date DESC
-    LIMIT 10
+        status,
+        COUNT(*) as count,
+        COUNT(*) FILTER (WHERE priority = ''High'' OR priority = ''Urgent'') as high_priority
+    FROM support_tickets
+    GROUP BY status
+    ORDER BY count DESC
 '));
 
--- Product sales summary
+-- Tickets by category and priority
 SELECT result FROM TABLE(pg_query('
     SELECT 
-        product_category,
-        COUNT(DISTINCT product_id) as products,
-        SUM(quantity) as units_sold,
-        SUM(line_total) as revenue
-    FROM order_items
-    GROUP BY product_category
-    ORDER BY revenue DESC
+        category,
+        priority,
+        COUNT(*) as ticket_count
+    FROM support_tickets
+    GROUP BY category, priority
+    ORDER BY category, 
+        CASE priority 
+            WHEN ''Urgent'' THEN 1 
+            WHEN ''High'' THEN 2 
+            WHEN ''Medium'' THEN 3 
+            ELSE 4 
+        END
+'));
+
+-- Recent negative reviews (for follow-up)
+SELECT result FROM TABLE(pg_query('
+    SELECT 
+        review_id,
+        product_id,
+        customer_id,
+        rating,
+        review_title,
+        review_date
+    FROM product_reviews
+    WHERE rating <= 2
+    ORDER BY review_date DESC
+    LIMIT 10
 '));

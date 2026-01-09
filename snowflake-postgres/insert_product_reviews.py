@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
+"""
+Insert product reviews into Snowflake Postgres.
+Pulls customer_ids and product_ids from Snowflake RAW tables to ensure data consistency.
+"""
 import json
 import os
 import psycopg2
 import random
 from datetime import date, timedelta
 
-# Load config from postgres_config.json or environment variables
+import snowflake.connector
+
+# Load Postgres config
 config_path = os.path.join(os.path.dirname(__file__), 'postgres_config.json')
 if os.path.exists(config_path):
     with open(config_path) as f:
@@ -23,7 +29,10 @@ else:
     POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
 
 if not POSTGRES_PASSWORD:
-    raise ValueError('postgres_config.json not found and POSTGRES_PASSWORD env var not set. Copy postgres_config.json.template to postgres_config.json and fill in credentials.')
+    raise ValueError('postgres_config.json not found and POSTGRES_PASSWORD env var not set.')
+
+# Snowflake connection name
+SNOWFLAKE_CONNECTION = os.getenv('SNOWFLAKE_CONNECTION_NAME', 'dash-builder-si')
 
 positive_reviews = [
     """I absolutely love this product! After using it for several weeks now, I can confidently say it exceeded all my expectations. The build quality is exceptional and you can tell a lot of thought went into the design. It performs flawlessly in all conditions I've tested it in. The comfort level is outstanding and I never feel fatigued even after extended use. I've recommended this to all my friends and family who are into winter sports. The price point is very reasonable considering the quality you get. Customer service was also very helpful when I had questions. This is definitely a top-tier product that I would purchase again without hesitation. Five stars all the way!""",
@@ -50,7 +59,34 @@ review_titles_positive = ['Absolutely Love It!', 'Best Purchase Ever', 'Exceeded
 review_titles_negative = ['Disappointed', 'Not Worth It', 'Would Not Recommend', 'Below Expectations', 'Quality Issues', 'Regret Purchase', 'Needs Improvement', 'Overpriced']
 review_titles_neutral = ['Decent Product', 'Gets the Job Done', 'Average Experience', 'Okay Purchase', 'Middle of the Road', 'Fair Quality', 'Mixed Feelings', 'Nothing Special']
 
+
+def get_snowflake_data():
+    """Query Snowflake for customer_ids and products."""
+    print(f"Connecting to Snowflake (connection: {SNOWFLAKE_CONNECTION})...")
+    sf_conn = snowflake.connector.connect(connection_name=SNOWFLAKE_CONNECTION)
+    sf_cur = sf_conn.cursor()
+    
+    # Get customer IDs
+    sf_cur.execute('SELECT CUSTOMER_ID FROM AUTOMATED_INTELLIGENCE.RAW.CUSTOMERS')
+    customer_ids = [row[0] for row in sf_cur.fetchall()]
+    print(f"  Found {len(customer_ids)} customers in Snowflake")
+    
+    # Get products
+    sf_cur.execute('SELECT PRODUCT_ID, PRODUCT_NAME FROM AUTOMATED_INTELLIGENCE.RAW.PRODUCT_CATALOG')
+    products = sf_cur.fetchall()
+    print(f"  Found {len(products)} products in Snowflake")
+    
+    sf_conn.close()
+    return customer_ids, products
+
+
 def main():
+    # Get reference data from Snowflake
+    customer_ids, products = get_snowflake_data()
+    random.shuffle(customer_ids)
+    
+    # Connect to Postgres
+    print(f"\nConnecting to Postgres ({POSTGRES_HOST})...")
     conn = psycopg2.connect(
         host=POSTGRES_HOST,
         port=POSTGRES_PORT,
@@ -65,17 +101,6 @@ def main():
     cur.execute('DELETE FROM product_reviews')
     print(f"Deleted existing reviews")
     
-    # Get products
-    cur.execute('SELECT product_id, product_name FROM product_catalog')
-    products = cur.fetchall()
-    print(f"Found {len(products)} products")
-    
-    # Get customer IDs
-    cur.execute('SELECT customer_id FROM customers')
-    customer_ids = [row[0] for row in cur.fetchall()]
-    random.shuffle(customer_ids)
-    print(f"Found {len(customer_ids)} customers")
-    
     today = date.today()
     insert_sql = '''INSERT INTO product_reviews (product_id, customer_id, review_date, rating, review_title, review_text, verified_purchase)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)'''
@@ -89,8 +114,9 @@ def main():
         
         for _ in range(num_reviews):
             if customer_idx >= len(customer_ids):
-                print("Ran out of unique customers!")
-                break
+                # Reshuffle and reuse customer IDs
+                random.shuffle(customer_ids)
+                customer_idx = 0
             
             customer_id = customer_ids[customer_idx]
             customer_idx += 1
@@ -124,6 +150,7 @@ def main():
     conn.commit()
     conn.close()
     print(f"\nTotal: {total_reviews} reviews inserted for {len(products)} products")
+
 
 if __name__ == '__main__':
     main()

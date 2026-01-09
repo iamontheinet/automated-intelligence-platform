@@ -114,6 +114,7 @@ All demos share the same foundation and work together to show an end-to-end data
 │  • MERGE-based sync to Snowflake (5-minute scheduled task)      │
 │  • Cortex Search for semantic search over synced data           │
 │  • Natural language queries via Cortex Agent                    │
+│  • pg_lake: Iceberg tables for external Postgres read access    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 

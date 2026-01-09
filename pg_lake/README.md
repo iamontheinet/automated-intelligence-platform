@@ -1,136 +1,194 @@
 # pg_lake Demo
 
-Standalone pg_lake demo using Docker. Demonstrates Postgres querying data lake files (Parquet, Iceberg) in S3.
+Query Snowflake Iceberg data directly from Postgres using pg_lake - demonstrating the **Open Lakehouse** pattern where Snowflake exports data to S3 in Iceberg format, and external systems (Postgres) can read it natively.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Snowflake Postgres (OLTP)                     │
+│  ┌─────────────────────┐ ┌─────────────────────────────────┐    │
+│  │   product_reviews   │ │       support_tickets           │    │
+│  │   (transactional    │ │       (transactional            │    │
+│  │    writes)          │ │        writes)                  │    │
+│  └─────────────────────┘ └─────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           │ MERGE-based Sync (5 min)
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Snowflake (OLAP)                              │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  AUTOMATED_INTELLIGENCE.RAW.PRODUCT_REVIEWS                 ││
+│  │  AUTOMATED_INTELLIGENCE.RAW.SUPPORT_TICKETS                 ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                           │                                      │
+│                           │ Iceberg Tables (PG_LAKE schema)      │
+│                           ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  AUTOMATED_INTELLIGENCE.PG_LAKE.PRODUCT_REVIEWS (Iceberg)   ││
+│  │  AUTOMATED_INTELLIGENCE.PG_LAKE.SUPPORT_TICKETS (Iceberg)   ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           │ S3 (Iceberg format)
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      S3 Bucket                                   │
+│  s3://dash-iceberg-snowflake/demos/pg_lake/                     │
+│  ├── product_reviews.xxx/metadata/00001-xxx.metadata.json       │
+│  └── support_tickets.xxx/metadata/00001-xxx.metadata.json       │
+└─────────────────────────────────────────────────────────────────┘
+                           │
+                           │ Foreign Tables (Iceberg metadata)
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      pg_lake (Postgres)                          │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │  product_reviews (foreign table → Iceberg metadata)         ││
+│  │  support_tickets (foreign table → Iceberg metadata)         ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ## Prerequisites
 
 - Docker & Docker Compose
-- AWS credentials configured (`~/.aws/credentials`) with access to `s3://dash-iceberg-snowflake/demos/`
+- AWS credentials configured (`~/.aws/credentials`) with access to `s3://dash-iceberg-snowflake/`
+- pg_lake Docker images built locally:
+  - `pg_lake:local`
+  - `pgduck-server:local`
 
 ## Quick Start
 
 ```bash
-# Start pg_lake
+# Start pg_lake containers
 docker compose up -d
 
-# Wait for it to be ready (~30 seconds)
-docker compose logs -f pg_lake
+# Wait for healthy status (~30 seconds)
+docker compose ps
 
 # Connect to Postgres
 psql -h localhost -p 5433 -U postgres -d postgres
 # Password: postgres
 ```
 
-## What's Running
+## Query Snowflake Data
 
-| Service | Port | Description |
-|---------|------|-------------|
-| PostgreSQL + pg_lake | 5433 | Main database with pg_lake extensions |
-| pgduck_server | 5332 | DuckDB query engine (internal) |
-
-## Demo Scenarios
-
-### 1. Query Parquet files from S3
+The foreign tables are auto-created on startup, pointing to Snowflake's Iceberg exports:
 
 ```sql
--- Create foreign table pointing to S3
-CREATE FOREIGN TABLE my_data ()
+-- Check row counts (should match Snowflake)
+SELECT 'product_reviews' as table_name, COUNT(*) FROM product_reviews
+UNION ALL
+SELECT 'support_tickets', COUNT(*) FROM support_tickets;
+
+-- Query product reviews
+SELECT review_id, rating, review_title 
+FROM product_reviews 
+LIMIT 5;
+
+-- Query support tickets
+SELECT ticket_id, category, priority, status 
+FROM support_tickets 
+LIMIT 5;
+
+-- Analytics: Rating distribution
+SELECT rating, COUNT(*) as count
+FROM product_reviews
+GROUP BY rating
+ORDER BY rating DESC;
+
+-- Analytics: Tickets by status
+SELECT status, COUNT(*) as count
+FROM support_tickets
+GROUP BY status;
+```
+
+## How It Works
+
+### Snowflake Side
+1. RAW tables (`PRODUCT_REVIEWS`, `SUPPORT_TICKETS`) store the data
+2. Iceberg tables in `PG_LAKE` schema export to S3 with Iceberg metadata
+3. Use `SYSTEM$GET_ICEBERG_TABLE_INFORMATION()` to get metadata paths
+
+### pg_lake Side
+1. Foreign tables point to **Iceberg metadata JSON** files (NOT raw parquet)
+2. pg_lake reads the metadata to understand schema, partitions, snapshots
+3. DuckDB (via pgduck_server) executes queries against S3
+
+### Key Pattern: Iceberg Metadata
+```sql
+-- CORRECT: Point to Iceberg metadata (preserves schema, snapshots, etc.)
+CREATE FOREIGN TABLE product_reviews()
 SERVER pg_lake
-OPTIONS (path 's3://dash-iceberg-snowflake/demos/exports/*.parquet');
+OPTIONS (path 's3://bucket/path/metadata/00001-xxx.metadata.json');
 
--- Query it like a regular table
-SELECT * FROM my_data LIMIT 10;
+-- ANTI-PATTERN: Reading raw parquet bypasses Iceberg benefits
+-- CREATE FOREIGN TABLE ... OPTIONS (path '.../*.parquet', format 'parquet')
 ```
-
-### 2. Create Iceberg tables
-
-```sql
--- Create Iceberg table (data stored in S3)
-CREATE TABLE events (
-    event_id SERIAL,
-    event_type TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-) USING iceberg;
-
--- Insert and query
-INSERT INTO events (event_type) VALUES ('click'), ('view');
-SELECT * FROM events;
-```
-
-### 3. Export data to S3
-
-```sql
-COPY (SELECT * FROM events) 
-TO 's3://dash-iceberg-snowflake/demos/pg_lake/exports/events.parquet';
-```
-
-## Integration with Snowflake Demo
-
-This pg_lake instance can query data exported from the main Snowflake demo:
-
-```
-Snowflake (AUTOMATED_INTELLIGENCE)
-    │
-    ├── COPY TO s3://dash-iceberg-snowflake/demos/exports/
-    │
-    └── pg_lake queries the same S3 location
-```
-
-### Export from Snowflake
-
-```sql
--- In Snowflake: Export metrics to S3
-COPY INTO @my_s3_stage/exports/daily_metrics/
-FROM AUTOMATED_INTELLIGENCE.DYNAMIC_TABLES.DAILY_BUSINESS_METRICS
-FILE_FORMAT = (TYPE = PARQUET)
-HEADER = TRUE;
-```
-
-### Query in pg_lake
-
-```sql
--- In pg_lake: Query the exported data
-CREATE FOREIGN TABLE daily_metrics ()
-SERVER pg_lake
-OPTIONS (path 's3://dash-iceberg-snowflake/demos/exports/daily_metrics/*.parquet');
-
-SELECT * FROM daily_metrics;
-```
-
-## S3 Configuration
-
-- **Bucket**: `s3://dash-iceberg-snowflake/demos/`
-- **Region**: `us-west-2`
-- **External Volume** (Snowflake): `aws_s3_ext_volume_snowflake`
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `docker-compose.yml` | Docker setup for pg_lake |
-| `init/01_init_pg_lake.sql` | Initializes pg_lake extensions |
-| `demo_queries.sql` | Example queries to run |
+| `docker-compose.yml` | Docker setup for pg_lake + pgduck-server |
+| `scripts/init-postgres.sql` | Creates foreign tables on startup |
+| `scripts/init-pgduck-server.sql` | Configures DuckDB S3 credentials |
+| `snowflake_export.sql` | SQL to create Iceberg tables in Snowflake |
+| `demo_queries.sql` | Example analytics queries |
+
+## Refreshing Data
+
+When Snowflake data changes:
+
+1. **Snowflake**: Refresh Iceberg tables
+   ```sql
+   INSERT OVERWRITE INTO AUTOMATED_INTELLIGENCE.PG_LAKE.PRODUCT_REVIEWS 
+   SELECT * FROM AUTOMATED_INTELLIGENCE.RAW.PRODUCT_REVIEWS;
+   ```
+
+2. **Get new metadata path**:
+   ```sql
+   SELECT SYSTEM$GET_ICEBERG_TABLE_INFORMATION('AUTOMATED_INTELLIGENCE.PG_LAKE.PRODUCT_REVIEWS');
+   ```
+
+3. **pg_lake**: Recreate foreign table with new metadata path
+   ```sql
+   DROP FOREIGN TABLE IF EXISTS product_reviews;
+   CREATE FOREIGN TABLE product_reviews()
+   SERVER pg_lake
+   OPTIONS (path 's3://...new-metadata-path.json');
+   ```
+
+## S3 Configuration
+
+| Setting | Value |
+|---------|-------|
+| Bucket | `s3://dash-iceberg-snowflake/demos/pg_lake/` |
+| Region | `us-west-2` |
+| External Volume | `aws_s3_ext_volume_snowflake` |
 
 ## Cleanup
 
 ```bash
-# Stop and remove containers
+# Stop containers
 docker compose down
 
-# Remove data volume too
+# Remove volumes too
 docker compose down -v
 ```
 
 ## Troubleshooting
 
 ### Connection refused
-Wait 30 seconds after `docker compose up` for pg_lake to initialize.
+Wait 30 seconds after `docker compose up` for initialization.
 
 ### S3 access denied
-Ensure `~/.aws/credentials` has valid credentials with S3 read access.
+Ensure `~/.aws/credentials` has valid credentials. The containers mount this file read-only.
 
-### Extension not found
-The pg_lake Docker image should have extensions pre-installed. Check logs:
-```bash
-docker compose logs pg_lake
-```
+### Wrong data / stale data
+Iceberg metadata paths change when tables are refreshed. Get the latest path from Snowflake and recreate the foreign table.
+
+### Schema mismatch
+Foreign tables with empty `()` auto-infer schema from Iceberg metadata. If columns changed in Snowflake, recreate the foreign table.

@@ -1,80 +1,115 @@
 -- ============================================================
 -- pg_lake Demo Queries
--- Query Snowflake-exported data directly from Postgres
+-- Query Snowflake Iceberg data directly from Postgres
 -- ============================================================
 
 -- ------------------------------------------------------------
--- 1. Query Parquet files exported from Snowflake
+-- 1. Verify Data - Compare counts with Snowflake
 -- ------------------------------------------------------------
 
--- Create foreign table pointing to Snowflake exports
--- (Run this after Snowflake exports data to S3)
+SELECT 'product_reviews' as table_name, COUNT(*) as row_count FROM product_reviews
+UNION ALL
+SELECT 'support_tickets', COUNT(*) FROM support_tickets;
 
-CREATE FOREIGN TABLE daily_metrics ()
-SERVER pg_lake
-OPTIONS (path 's3://dash-iceberg-snowflake/demos/exports/daily_metrics/*.parquet');
+-- ------------------------------------------------------------
+-- 2. Product Reviews Analysis
+-- ------------------------------------------------------------
 
--- Query the data
-SELECT * FROM daily_metrics LIMIT 10;
+-- Rating distribution
+SELECT rating, COUNT(*) as count
+FROM product_reviews
+GROUP BY rating
+ORDER BY rating DESC;
 
--- Aggregations work too
+-- Recent reviews with sentiment
 SELECT 
-    order_date,
-    SUM(total_orders) as orders,
-    SUM(total_revenue) as revenue
-FROM daily_metrics
-GROUP BY order_date
-ORDER BY order_date DESC
+    review_id,
+    review_date,
+    rating,
+    review_title,
+    CASE 
+        WHEN rating >= 4 THEN 'Positive'
+        WHEN rating = 3 THEN 'Neutral'
+        ELSE 'Negative'
+    END as sentiment
+FROM product_reviews
+ORDER BY review_date DESC
 LIMIT 10;
 
+-- Average rating by product
+SELECT 
+    product_id,
+    COUNT(*) as review_count,
+    ROUND(AVG(rating)::numeric, 2) as avg_rating
+FROM product_reviews
+GROUP BY product_id
+ORDER BY review_count DESC;
 
 -- ------------------------------------------------------------
--- 2. Create native Iceberg table in Postgres
+-- 3. Support Tickets Analysis  
 -- ------------------------------------------------------------
 
--- Create an Iceberg table (data stored in S3)
-CREATE TABLE events (
-    event_id SERIAL,
-    event_type TEXT,
-    event_data JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-) USING iceberg;
+-- Tickets by status
+SELECT status, COUNT(*) as count
+FROM support_tickets
+GROUP BY status
+ORDER BY count DESC;
 
--- Insert data
-INSERT INTO events (event_type, event_data) VALUES
-    ('page_view', '{"page": "/home", "user_id": 123}'),
-    ('click', '{"button": "buy_now", "user_id": 123}'),
-    ('purchase', '{"order_id": 456, "amount": 99.99}');
+-- Tickets by category and priority
+SELECT 
+    category,
+    priority,
+    COUNT(*) as count
+FROM support_tickets
+GROUP BY category, priority
+ORDER BY category, priority;
 
--- Query it
-SELECT * FROM events;
-
--- Check Iceberg metadata
-SELECT table_name, metadata_location FROM iceberg_tables;
-
-
--- ------------------------------------------------------------
--- 3. COPY data to/from S3
--- ------------------------------------------------------------
-
--- Export query results to S3 as Parquet
-COPY (SELECT * FROM events) 
-TO 's3://dash-iceberg-snowflake/demos/pg_lake/exports/events.parquet';
-
--- Import data from S3
--- COPY events FROM 's3://dash-iceberg-snowflake/demos/pg_lake/exports/events.parquet';
-
+-- Open high-priority tickets
+SELECT 
+    ticket_id,
+    category,
+    priority,
+    subject
+FROM support_tickets
+WHERE status = 'Open' AND priority IN ('High', 'Urgent')
+ORDER BY ticket_date DESC
+LIMIT 10;
 
 -- ------------------------------------------------------------
--- 4. Query CSV/JSON files directly
+-- 4. Cross-table Analytics (if customer_id matches)
 -- ------------------------------------------------------------
 
--- If you have CSV files in S3:
--- CREATE FOREIGN TABLE my_csv ()
--- SERVER pg_lake
--- OPTIONS (path 's3://dash-iceberg-snowflake/demos/data/*.csv');
+-- Customers with both negative reviews and support tickets
+SELECT 
+    pr.customer_id,
+    COUNT(DISTINCT pr.review_id) as negative_reviews,
+    COUNT(DISTINCT st.ticket_id) as support_tickets
+FROM product_reviews pr
+JOIN support_tickets st ON pr.customer_id = st.customer_id
+WHERE pr.rating <= 2
+GROUP BY pr.customer_id
+ORDER BY negative_reviews DESC
+LIMIT 10;
 
--- If you have JSON files:
--- CREATE FOREIGN TABLE my_json ()
--- SERVER pg_lake  
--- OPTIONS (path 's3://dash-iceberg-snowflake/demos/data/*.json');
+-- ------------------------------------------------------------
+-- 5. Time-based Analysis
+-- ------------------------------------------------------------
+
+-- Reviews by date
+SELECT 
+    review_date,
+    COUNT(*) as reviews,
+    ROUND(AVG(rating)::numeric, 2) as avg_rating
+FROM product_reviews
+GROUP BY review_date
+ORDER BY review_date DESC
+LIMIT 14;
+
+-- Ticket volume by date
+SELECT 
+    ticket_date::date as date,
+    COUNT(*) as tickets
+FROM support_tickets
+GROUP BY ticket_date::date
+ORDER BY date DESC
+LIMIT 14;

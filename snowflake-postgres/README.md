@@ -29,13 +29,21 @@ Connect to your Snowflake Postgres instance and run:
 psql "postgres://user:pass@host:5432/postgres?sslmode=require" -f 01_create_postgres_tables.sql
 ```
 
-Or use Python:
+### 2. Generate Sample Data
+
+The scripts pull `customer_id` and `product_id` from Snowflake RAW tables to ensure data consistency.
+
 ```bash
-pip install psycopg2-binary
-python insert_sample_data.py  # Creates tables and inserts sample data
+pip install psycopg2-binary snowflake-connector-python
+
+# Set Snowflake connection (defaults to dash-builder-si)
+export SNOWFLAKE_CONNECTION_NAME=<your-connection>
+
+python insert_product_reviews.py  # Generate ~395 product reviews
+python insert_support_tickets.py  # Generate ~500 support tickets
 ```
 
-### 2. Setup External Access in Snowflake
+### 3. Setup External Access in Snowflake
 
 Run in Snowflake (update credentials in the script first):
 
@@ -43,53 +51,43 @@ Run in Snowflake (update credentials in the script first):
 snow sql -c <connection> -f 02_setup_external_access.sql
 ```
 
-### 3. Create Query Functions
+### 4. Create Query Functions
 
 ```bash
 snow sql -c <connection> -f 03_create_query_functions.sql
 ```
 
-### 4. Query Postgres from Snowflake
+### 5. Create Sync Task
+
+```bash
+snow sql -c <connection> -f 05_create_sync_task.sql
+```
+
+### 6. Query Postgres from Snowflake
 
 See `04_example_queries.sql` for examples, or:
 
 ```sql
 -- Simple count
-CALL query_postgres('SELECT COUNT(*) FROM customers');
+CALL query_postgres('SELECT COUNT(*) FROM product_reviews');
 
 -- Query as table
-SELECT result FROM TABLE(pg_query('SELECT * FROM customers LIMIT 10'));
+SELECT result FROM TABLE(pg_query('SELECT * FROM product_reviews LIMIT 10'));
 
 -- Extract fields
 SELECT 
-    result:customer_id::INT as customer_id,
-    result:first_name::STRING as first_name
-FROM TABLE(pg_query('SELECT * FROM customers LIMIT 10'));
+    result:review_id::INT as review_id,
+    result:rating::INT as rating,
+    result:review_title::STRING as title
+FROM TABLE(pg_query('SELECT * FROM product_reviews LIMIT 10'));
 ```
-
-## Files
-
-| File | Description |
-|------|-------------|
-| `01_create_postgres_tables.sql` | DDL to create tables in Postgres |
-| `02_setup_external_access.sql` | Snowflake network rule, secret, and integration |
-| `03_create_query_functions.sql` | Snowflake stored procedure and UDTF |
-| `04_example_queries.sql` | Example queries using the functions |
-| `05_create_sync_task.sql` | MERGE-based sync procedure and scheduled task |
-| `insert_sample_data.py` | Python script to populate tables with sample data |
-| `insert_product_reviews.py` | Generate product reviews with sentiment distribution |
-| `insert_support_tickets.py` | Generate support tickets with sentiment distribution |
 
 ## Tables
 
-The schema mirrors `AUTOMATED_INTELLIGENCE.RAW` in Snowflake:
-
-- `customers` - Customer information (synced from Snowflake)
-- `orders` - Order headers
-- `order_items` - Order line items
-- `product_catalog` - Product information (synced from Snowflake)
-- `product_reviews` - Customer reviews (**OLTP source** - written in Postgres, synced to Snowflake)
-- `support_tickets` - Support ticket data (**OLTP source** - written in Postgres, synced to Snowflake)
+| Table | Records | Purpose |
+|-------|---------|---------|
+| product_reviews | ~395 | Customer reviews (OLTP source) |
+| support_tickets | ~500 | Support tickets (OLTP source) |
 
 ## Hybrid OLTP/OLAP Architecture
 
@@ -125,6 +123,18 @@ The schema mirrors `AUTOMATED_INTELLIGENCE.RAW` in Snowflake:
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `01_create_postgres_tables.sql` | DDL to create tables in Postgres |
+| `02_setup_external_access.sql` | Snowflake network rule, secret, and integration |
+| `03_create_query_functions.sql` | Snowflake stored procedure and UDTF |
+| `04_example_queries.sql` | Example queries using the functions |
+| `05_create_sync_task.sql` | MERGE-based sync procedure and scheduled task |
+| `insert_product_reviews.py` | Generate product reviews (pulls IDs from Snowflake) |
+| `insert_support_tickets.py` | Generate support tickets (pulls IDs from Snowflake) |
 
 ## Sync Mechanism
 
@@ -166,59 +176,8 @@ SELECT PARSE_JSON(
 ## Connection Details
 
 ```
-Host: o6gnp7eqn5awvivkqhk22xpoym.sfsenorthamerica-gen-ai-hol.us-west-2.aws.postgres.snowflake.app
+Host: <your-postgres-host>.postgres.snowflake.app
 Port: 5432
 Database: postgres
 SSL: Required
 ```
-
-## Architecture
-
-## External Access Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Snowflake Account                        │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  External Access Integration (POSTGRES schema)       │    │
-│  │  - Network Rule (egress to Postgres host)           │    │
-│  │  - Secret (Postgres credentials)                    │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                           │                                  │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Python UDF/Stored Procedure (POSTGRES schema)       │    │
-│  │  - query_postgres(sql) → VARIANT (single result)    │    │
-│  │  - pg_query(sql) → TABLE (multiple rows)            │    │
-│  │  - pg_execute(sql) → INT (DML operations)           │    │
-│  │  - sync_postgres_to_snowflake() → VARIANT (sync)    │    │
-│  └─────────────────────────────────────────────────────┘    │
-│                           │                                  │
-│  ┌─────────────────────────────────────────────────────┐    │
-│  │  Scheduled Task                                       │    │
-│  │  - postgres_sync_task (every 5 minutes)              │    │
-│  └─────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│              Snowflake Postgres Instance                     │
-│  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐   │
-│  │  customers  │ │   orders    │ │    order_items      │   │
-│  └─────────────┘ └─────────────┘ └─────────────────────┘   │
-│  ┌─────────────────────┐ ┌─────────────────────────────┐   │
-│  │   product_catalog   │ │      product_reviews        │   │
-│  └─────────────────────┘ └─────────────────────────────┘   │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │                  support_tickets                     │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Data Volumes
-
-| Table | Records | Sentiment Distribution |
-|-------|---------|------------------------|
-| product_reviews | ~395 | 65% positive, 15% negative, 20% neutral |
-| support_tickets | ~500 | 40% positive, 20% negative, 40% neutral |
-| customers | 1,000 | Synced from Snowflake |
-| product_catalog | 10 | Synced from Snowflake |

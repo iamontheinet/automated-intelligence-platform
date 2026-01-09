@@ -63,10 +63,19 @@ The platform integrates **Snowflake Postgres** for transactional workloads with 
 * **MERGE-based Sync:** A scheduled task runs every 5 minutes, using MERGE operations to efficiently sync data from Postgres to Snowflake (handling inserts, updates, and deletes).
 * **Cortex Search:** Two search services enable semantic search over product reviews and support tickets, allowing natural language queries like "What are customers saying about Ski Boots?"
 
+## 8. Open Lakehouse (pg_lake)
+
+The platform demonstrates **Iceberg interoperability** using pg_lake, allowing external PostgreSQL instances to query Snowflake data.
+
+* **Iceberg Tables:** Snowflake exports `PRODUCT_REVIEWS` and `SUPPORT_TICKETS` as Iceberg tables to S3.
+* **pg_lake Foreign Tables:** External Postgres reads the same data via Iceberg metadata files, preserving schema evolution and snapshot semantics.
+* **Open Data Format:** True lakehouse architecture - data flows seamlessly between Snowflake, S3 (Iceberg format), and any Iceberg-compatible system.
+* **Bi-directional Access:** Same data accessible from Snowflake (cloud data warehouse) and external Postgres (on-prem or other clouds).
+
 ## 6. Monitoring
 
 A **Streamlit Dashboard** provides real-time observability across the entire pipeline. It monitors live ingestion metrics, Dynamic Table health, Interactive Table query latency, and ML model feature importance.
 
 ## Summary of Capabilities
 
-This suite demonstrates a fully native stack that requires no external systems. It offers set-and-forget automation for transformations, linear scalability for ingestion, and enterprise-grade security built directly into the data platform. The Hybrid OLTP/OLAP architecture with Snowflake Postgres showcases how transactional and analytical workloads can coexist, with Cortex Search and Agent enabling natural language access to all data.
+This suite demonstrates a fully native stack that requires no external systems. It offers set-and-forget automation for transformations, linear scalability for ingestion, and enterprise-grade security built directly into the data platform. The Hybrid OLTP/OLAP architecture with Snowflake Postgres showcases how transactional and analytical workloads can coexist, with Cortex Search and Agent enabling natural language access to all data. The pg_lake integration demonstrates Snowflake's commitment to open data formats, allowing external systems to query Snowflake data via Iceberg tables.

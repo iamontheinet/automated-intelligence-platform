@@ -78,6 +78,7 @@ This demo suite executes a full-stack data lifecycle, starting with real-time in
 │  • Product reviews & support tickets in Postgres                │
 │  • MERGE-based sync via scheduled task                          │
 │  • Cortex Search for semantic search                            │
+│  • pg_lake: Iceberg tables for external Postgres read access    │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1537,6 +1538,38 @@ Navigate to **AI & ML > Snowflake Intelligence** and ask:
 | support_tickets | ~500 | 40% positive, 20% negative, 40% neutral |
 
 **See:** `snowflake-postgres/README.md` for detailed setup and architecture
+
+### Step 5: pg_lake - Open Lakehouse (Optional Extension)
+
+**Setup (one-time):**
+```bash
+# Create Iceberg tables for external Postgres access
+snow sql -c <your-connection-name> -f pg_lake/snowflake_export.sql
+```
+
+**Demo Query from external Postgres:**
+```sql
+-- Query Snowflake data from pg_lake foreign tables
+SELECT * FROM product_reviews_iceberg LIMIT 5;
+SELECT * FROM support_tickets_iceberg LIMIT 5;
+
+-- Verify row counts match
+SELECT COUNT(*) FROM product_reviews_iceberg;  -- Should match Snowflake
+SELECT COUNT(*) FROM support_tickets_iceberg;  -- Should match Snowflake
+```
+
+**What to say:**
+> "This is true lakehouse architecture. Snowflake exports data as Iceberg tables to S3, and external Postgres instances can read that data directly via pg_lake foreign tables.
+>
+> **Key benefits:**
+> - **Open Data Format:** Iceberg is an open table format - not locked into any vendor
+> - **Schema Evolution:** Iceberg handles schema changes gracefully
+> - **Snapshot Semantics:** External systems read consistent snapshots
+> - **Multi-Engine Analytics:** Same data accessible from Snowflake, Spark, Trino, or any Iceberg-compatible system
+>
+> This demonstrates Snowflake's commitment to open standards and interoperability."
+
+**See:** `pg_lake/README.md` for external Postgres setup and architecture
 
 ---
 

@@ -1132,5 +1132,11 @@ CALL automated_intelligence.raw.generate_customers($NUM_CUSTOMERS);
 --    Purpose: Create demo role with row-level security policies
 --    Use when: You want to demonstrate region-based access control
 --
+-- 3. PG_LAKE (Open Lakehouse - Query Snowflake Data from Postgres)
+--    - pg_lake/snowflake_export.sql
+--    Purpose: Create Iceberg tables that pg_lake (Postgres) can query via S3
+--    Requires: External volume 'aws_s3_ext_volume_snowflake' configured
+--    Use when: Demonstrating Snowflake's open data formats and interoperability
+--
 -- Run these scripts individually based on your specific requirements
 -- ============================================================================

@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
+"""
+Insert support tickets into Snowflake Postgres.
+Pulls customer_ids from Snowflake RAW tables to ensure data consistency.
+"""
 import json
 import os
 import psycopg2
 import random
 from datetime import datetime, timedelta
 
-# Load config from postgres_config.json or environment variables
+import snowflake.connector
+
+# Load Postgres config
 config_path = os.path.join(os.path.dirname(__file__), 'postgres_config.json')
 if os.path.exists(config_path):
     with open(config_path) as f:
@@ -23,7 +29,10 @@ else:
     POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
 
 if not POSTGRES_PASSWORD:
-    raise ValueError('postgres_config.json not found and POSTGRES_PASSWORD env var not set. Copy postgres_config.json.template to postgres_config.json and fill in credentials.')
+    raise ValueError('postgres_config.json not found and POSTGRES_PASSWORD env var not set.')
+
+# Snowflake connection name
+SNOWFLAKE_CONNECTION = os.getenv('SNOWFLAKE_CONNECTION_NAME', 'dash-builder-si')
 
 categories = ['Shipping', 'Product Quality', 'Returns', 'Billing', 'Technical Support', 'Order Status', 'Account Issues', 'General Inquiry']
 priorities = ['Low', 'Medium', 'High', 'Urgent']
@@ -137,7 +146,28 @@ neutral_tickets = [
     }
 ]
 
+
+def get_snowflake_customers():
+    """Query Snowflake for customer_ids."""
+    print(f"Connecting to Snowflake (connection: {SNOWFLAKE_CONNECTION})...")
+    sf_conn = snowflake.connector.connect(connection_name=SNOWFLAKE_CONNECTION)
+    sf_cur = sf_conn.cursor()
+    
+    sf_cur.execute('SELECT CUSTOMER_ID FROM AUTOMATED_INTELLIGENCE.RAW.CUSTOMERS')
+    customer_ids = [row[0] for row in sf_cur.fetchall()]
+    print(f"  Found {len(customer_ids)} customers in Snowflake")
+    
+    sf_conn.close()
+    return customer_ids
+
+
 def main():
+    # Get customer IDs from Snowflake
+    customer_ids = get_snowflake_customers()
+    random.shuffle(customer_ids)
+    
+    # Connect to Postgres
+    print(f"\nConnecting to Postgres ({POSTGRES_HOST})...")
     conn = psycopg2.connect(
         host=POSTGRES_HOST,
         port=POSTGRES_PORT,
@@ -152,12 +182,6 @@ def main():
     cur.execute('DELETE FROM support_tickets')
     print("Deleted existing support tickets")
     
-    # Get customer IDs
-    cur.execute('SELECT customer_id FROM customers')
-    customer_ids = [row[0] for row in cur.fetchall()]
-    random.shuffle(customer_ids)
-    print(f"Found {len(customer_ids)} customers")
-    
     now = datetime.now()
     insert_sql = '''INSERT INTO support_tickets (customer_id, ticket_date, category, priority, subject, description, resolution, status)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'''
@@ -169,10 +193,10 @@ def main():
     
     for i in range(total_tickets):
         if i >= len(customer_ids):
-            print("Ran out of unique customers!")
-            break
+            # Reshuffle and reuse customer IDs
+            random.shuffle(customer_ids)
         
-        customer_id = customer_ids[i]
+        customer_id = customer_ids[i % len(customer_ids)]
         
         # Random datetime in last 30 days
         ticket_date = now - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23), minutes=random.randint(0, 59))
@@ -213,6 +237,7 @@ def main():
     print(f"  Negative/Complaints: {negative_count}")
     print(f"  Positive/Feedback: {positive_count}")
     print(f"  Neutral/Inquiries: {neutral_count}")
+
 
 if __name__ == '__main__':
     main()
