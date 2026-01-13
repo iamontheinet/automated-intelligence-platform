@@ -36,4 +36,5 @@ automated_intelligence:
       schema: staging
       threads: 4
       authenticator: WORKLOAD_IDENTITY
+      workload_identity_provider: OIDC
       token: "{{ env_var('SNOWFLAKE_TOKEN') }}"
