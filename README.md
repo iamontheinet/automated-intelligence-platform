@@ -14,6 +14,7 @@ This demo suite executes a full-stack data lifecycle, starting with real-time in
 8. **Snowflake Intelligence** - AI-powered conversational analytics using Cortex Agent for intuitive data exploration
 9. **Security & Governance** - Row-based access control for Cortex Agents
 10. **Snowflake Postgres** - Hybrid OLTP/OLAP architecture with Postgres for transactional writes and Snowflake for analytics
+11. **Workload Identity Federation** - Zero-secrets authentication from GitHub Actions, AWS, Kubernetes
 
 All demos share the same foundation and work together to show an end-to-end data lifecycle on Snowflake.
 
@@ -115,6 +116,15 @@ All demos share the same foundation and work together to show an end-to-end data
 │  • Cortex Search for semantic search over synced data           │
 │  • Natural language queries via Cortex Agent                    │
 │  • pg_lake: Iceberg tables for external Postgres read access    │
+└──────────────────────────────────────────────────────────────────┘
+                          ↓
+┌──────────────────────────────────────────────────────────────────┐
+│  DEMO 11: WORKLOAD IDENTITY FEDERATION                           │
+│  GitHub Actions → Snowflake (Zero Secrets)                       │
+│  • OIDC-based authentication (no passwords stored)               │
+│  • SERVICE user type with WORKLOAD_IDENTITY                      │
+│  • Short-lived tokens (10 min expiry)                            │
+│  • Supports: GitHub Actions, AWS IAM, EKS, AKS, GKE              │
 └──────────────────────────────────────────────────────────────────┘
 ```
 

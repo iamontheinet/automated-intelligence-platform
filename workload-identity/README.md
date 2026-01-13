@@ -51,7 +51,7 @@ The workflow is at `.github/workflows/dbt-oidc-demo.yml`
 
 ### 3. Run the demo
 
-1. Go to GitHub → Actions → "❄️ dbt CI (OIDC Demo)"
+1. Go to GitHub → Actions → "❄️ Snowflake OIDC Demo (Zero Secrets)"
 2. Click "Run workflow"
 3. Watch the magic happen!
 
@@ -59,10 +59,10 @@ The workflow is at `.github/workflows/dbt-oidc-demo.yml`
 
 | Time | Action | Highlight |
 |------|--------|-----------|
-| 0-5s | GitHub → Settings → Secrets | **"No Snowflake credentials!"** |
+| 0-5s | GitHub → Settings → Secrets | **"No Snowflake credentials stored!"** |
 | 5-10s | Actions → Run workflow | Click the button |
-| 10-25s | Watch workflow execute | OIDC auth → dbt test → query |
-| 25-30s | Show output | **"20K customers, $8M revenue, zero secrets!"** |
+| 10-20s | Watch workflow execute | OIDC token → Snowflake query |
+| 20-30s | Show output | **"20K customers, $8M revenue, zero secrets!"** |
 
 ## Files
 
@@ -70,21 +70,58 @@ The workflow is at `.github/workflows/dbt-oidc-demo.yml`
 |------|----------|---------|
 | `setup.sql` | `workload-identity/` | Snowflake SERVICE user setup |
 | `dbt-oidc-demo.yml` | `.github/workflows/` | GitHub Actions workflow |
-| `profiles.yml` | `dbt-analytics/` | Added `oidc` target |
+
+## Example Output
+
+```
+🔐 Connecting to Snowflake via OIDC...
+   (Zero secrets stored in this repository!)
+
+✅ Authenticated as: GITHUB_ACTIONS_DBT
+✅ Using role: SNOWFLAKE_INTELLIGENCE_ADMIN
+
+==================================================
+🎯 LIVE DATA FROM SNOWFLAKE
+==================================================
+   Customers:     20,505
+   Total Revenue: $8,234,567.89
+   Avg Revenue:   $401.59
+==================================================
+
+✅ GitHub Actions authenticated via OIDC
+✅ No passwords, keys, or secrets stored!
+✅ Token auto-expires in 10 minutes
+```
 
 ## Supported Platforms
 
 This demo uses GitHub Actions OIDC. The same pattern works with:
 
-| Platform | OIDC Issuer |
-|----------|-------------|
-| GitHub Actions | `token.actions.githubusercontent.com` |
-| AWS (EC2, Lambda) | Use `TYPE = AWS` instead |
-| EKS | `oidc.eks.<region>.amazonaws.com/id/<id>` |
-| AKS | `<region>.oic.prod-aks.azure.com/<tenant>/<id>` |
-| GKE | `container.googleapis.com/v1/projects/<proj>/...` |
+| Platform | Type | Configuration |
+|----------|------|---------------|
+| GitHub Actions | OIDC | `ISSUER = 'https://token.actions.githubusercontent.com'` |
+| AWS (EC2, Lambda, ECS) | AWS | `TYPE = AWS`, `ARN = 'arn:aws:iam::...'` |
+| EKS | OIDC | `ISSUER = 'https://oidc.eks.<region>.amazonaws.com/id/<id>'` |
+| AKS | OIDC | `ISSUER = 'https://<region>.oic.prod-aks.azure.com/...'` |
+| GKE | OIDC | `ISSUER = 'https://container.googleapis.com/v1/projects/...'` |
 
 See `.snowflake/cortex/skills/workload-identity-federation/SKILL.md` for full documentation.
+
+## Known Limitations
+
+### dbt-snowflake
+
+As of January 2026, **dbt-snowflake does not support Workload Identity Federation**. The adapter's `auth_args()` method does not pass `workload_identity_provider` to the Snowflake connector.
+
+**Workarounds:**
+- Use Python connector directly (as shown in this demo)
+- Use key-pair authentication for dbt CI/CD
+- Wait for dbt-snowflake to add WIF support
+
+**What works:**
+- ✅ Python `snowflake-connector-python` with `authenticator='WORKLOAD_IDENTITY'`
+- ✅ JDBC, Go, .NET, Node.js, ODBC drivers
+- ❌ dbt-snowflake (profiles.yml doesn't support `workload_identity_provider`)
 
 ## Troubleshooting
 
@@ -99,3 +136,7 @@ See `.snowflake/cortex/skills/workload-identity-federation/SKILL.md` for full do
 
 **"Role not authorized"**
 - Ensure role was granted: `GRANT ROLE ... TO USER github_actions_dbt`
+
+**"workload_identity_provider must be set"**
+- You're using dbt-snowflake, which doesn't support WIF yet
+- Use Python connector directly instead

@@ -25,16 +25,7 @@ automated_intelligence:
       threads: 4
       client_session_keep_alive: False
 
-    # GitHub Actions OIDC target (no secrets!)
-    oidc:
-      type: snowflake
-      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
-      user: "{{ env_var('SNOWFLAKE_USER') }}"
-      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
-      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE') }}"
-      database: "{{ env_var('SNOWFLAKE_DATABASE') }}"
-      schema: staging
-      threads: 4
-      authenticator: WORKLOAD_IDENTITY
-      workload_identity_provider: OIDC
-      token: "{{ env_var('SNOWFLAKE_TOKEN') }}"
+    # NOTE: dbt-snowflake does NOT support Workload Identity Federation (as of Jan 2026)
+    # The adapter's auth_args() method doesn't pass workload_identity_provider to the connector.
+    # For OIDC-based CI/CD, use Python connector directly instead.
+    # See: workload-identity/README.md for details

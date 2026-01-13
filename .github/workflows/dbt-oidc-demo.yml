@@ -1,4 +1,4 @@
-name: ❄️ dbt CI/CD via OIDC (Zero Secrets)
+name: ❄️ Snowflake OIDC Demo (Zero Secrets)
 
 on:
   workflow_dispatch:
@@ -9,27 +9,23 @@ env:
   SNOWFLAKE_DATABASE: AUTOMATED_INTELLIGENCE
   SNOWFLAKE_WAREHOUSE: AUTOMATED_INTELLIGENCE_WH
   SNOWFLAKE_ROLE: SNOWFLAKE_INTELLIGENCE_ADMIN
-  DBT_PROFILES_DIR: ${{ github.workspace }}/dbt-analytics
 
 jobs:
-  dbt-oidc:
-    name: 🔐 OIDC Auth → dbt Test
+  snowflake-oidc:
+    name: 🔐 OIDC Auth → Query Snowflake
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
       
     steps:
-      - name: 📥 Checkout
-        uses: actions/checkout@v4
-
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: 📦 Install dependencies
-        run: pip install dbt-snowflake snowflake-connector-python
+      - name: 📦 Install Snowflake connector
+        run: pip install snowflake-connector-python
 
       - name: 🔐 Get OIDC Token (NO SECRETS STORED!)
         id: auth
@@ -39,41 +35,9 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=snowflakecomputing.com" | jq -r '.value')
           echo "::add-mask::$TOKEN"
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
-          echo "✅ Got short-lived OIDC token"
+          echo "✅ Got short-lived OIDC token (expires in 10 min)"
 
-      - name: 🔧 Generate dbt profile with OIDC token
-        env:
-          SNOWFLAKE_TOKEN: ${{ steps.auth.outputs.token }}
-        run: |
-          cat > dbt-analytics/profiles.yml << EOF
-          automated_intelligence:
-            target: oidc
-            outputs:
-              oidc:
-                type: snowflake
-                account: ${SNOWFLAKE_ACCOUNT}
-                user: ${SNOWFLAKE_USER}
-                role: ${SNOWFLAKE_ROLE}
-                warehouse: ${SNOWFLAKE_WAREHOUSE}
-                database: ${SNOWFLAKE_DATABASE}
-                schema: staging
-                threads: 4
-                authenticator: oauth
-                token: "${SNOWFLAKE_TOKEN}"
-          EOF
-          echo "✅ Generated profiles.yml with OIDC token"
-
-      - name: ❄️ dbt deps
-        working-directory: dbt-analytics
-        run: dbt deps
-
-      - name: ❄️ dbt test (validates real data)
-        working-directory: dbt-analytics
-        run: |
-          echo "📊 Running dbt tests via OIDC authentication..."
-          dbt test --select customer_lifetime_value
-
-      - name: 🎯 Query Results (proves real access)
+      - name: ❄️ Query Snowflake (proves real access)
         env:
           SNOWFLAKE_TOKEN: ${{ steps.auth.outputs.token }}
         run: |
@@ -82,6 +46,9 @@ jobs:
           import os
 
           print("🔐 Connecting to Snowflake via OIDC...")
+          print("   (Zero secrets stored in this repository!)")
+          print("")
+
           conn = snowflake.connector.connect(
               account=os.environ['SNOWFLAKE_ACCOUNT'],
               user=os.environ['SNOWFLAKE_USER'],
@@ -94,6 +61,15 @@ jobs:
           )
 
           cur = conn.cursor()
+          
+          # Verify identity
+          cur.execute("SELECT CURRENT_USER(), CURRENT_ROLE()")
+          user, role = cur.fetchone()
+          print(f"✅ Authenticated as: {user}")
+          print(f"✅ Using role: {role}")
+          print("")
+
+          # Query real data
           cur.execute("""
               SELECT 
                   COUNT(*) as customers,
@@ -103,7 +79,6 @@ jobs:
           """)
           row = cur.fetchone()
           
-          print("")
           print("=" * 50)
           print("🎯 LIVE DATA FROM SNOWFLAKE")
           print("=" * 50)
@@ -112,7 +87,7 @@ jobs:
           print(f"   Avg Revenue:   ${row[2]:,.2f}")
           print("=" * 50)
           print("")
-          print("✅ dbt tests passed + data validated")
-          print("✅ Authenticated via GitHub OIDC")
-          print("✅ Zero secrets stored in repository!")
+          print("✅ GitHub Actions authenticated via OIDC")
+          print("✅ No passwords, keys, or secrets stored!")
+          print("✅ Token auto-expires in 10 minutes")
           EOF
